@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum LoanStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  RETURNED
+}
+
+model User {
+  id            String         @id @default(cuid())
+  name          String
+  email         String         @unique
+  password      String
+  role          Role           @default(USER)
+  createdAt     DateTime       @default(now())
+  loans         Loan[]
+  notifications Notification[]
+}
+
+model Category {
+  id    String @id @default(cuid())
+  name  String
+  slug  String @unique
+  books Book[]
+}
+
+model Book {
+  id          String   @id @default(cuid())
+  title       String
+  author      String
+  description String   @db.Text
+  coverImage  String?
+  externalUrl String?
+  stock       Int      @default(1)
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id])
+  createdAt   DateTime @default(now())
+  loans       Loan[]
+
+  @@index([categoryId])
+  @@index([title])
+  @@index([author])
+}
+
+model Loan {
+  id          String     @id @default(cuid())
+  userId      String
+  bookId      String
+  requestedAt DateTime   @default(now())
+  approvedAt  DateTime?
+  dueDate     DateTime?
+  returnedAt  DateTime?
+  status      LoanStatus @default(PENDING)
+  fine        Float      @default(0)
+  user        User       @relation(fields: [userId], references: [id])
+  book        Book       @relation(fields: [bookId], references: [id])
+
+  @@index([userId])
+  @@index([bookId])
+  @@index([status])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([isRead])
+}

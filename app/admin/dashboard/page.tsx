@@ -1,0 +1,106 @@
+import { prisma } from '@/lib/prisma'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { formatRupiah, formatDate } from '@/lib/utils'
+import Link from 'next/link'
+import QuickActions from './QuickActions'
+
+export default async function AdminDashboard() {
+  const session = await getServerSession(authOptions)
+
+  const [totalBooks, totalUsers, activeLoans, pendingRequests, overdueLoans, fineAggregate, recentLoans] =
+    await Promise.all([
+      prisma.book.count(),
+      prisma.user.count({ where: { role: 'USER' } }),
+      prisma.loan.count({ where: { status: 'APPROVED' } }),
+      prisma.loan.count({ where: { status: 'PENDING' } }),
+      prisma.loan.count({ where: { status: 'APPROVED', dueDate: { lt: new Date() } } }),
+      prisma.loan.aggregate({ where: { status: 'RETURNED' }, _sum: { fine: true } }),
+      prisma.loan.findMany({
+        take: 5,
+        orderBy: { requestedAt: 'desc' },
+        include: { user: { select: { name: true } }, book: { select: { title: true } } },
+      }),
+    ])
+
+  const stats = [
+    { label: 'Total Buku', value: totalBooks, icon: '📚', color: '#4F9CF9', bg: 'rgba(79,156,249,0.1)' },
+    { label: 'Total Pengguna', value: totalUsers, icon: '👥', color: '#7B5EA7', bg: 'rgba(123,94,167,0.1)' },
+    { label: 'Pinjaman Aktif', value: activeLoans, icon: '📖', color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
+    { label: 'Menunggu Approval', value: pendingRequests, icon: '⏳', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
+    { label: 'Terlambat', value: overdueLoans, icon: '⚠️', color: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
+    { label: 'Total Denda', value: formatRupiah(fineAggregate._sum.fine ?? 0), icon: '💰', color: '#4F9CF9', bg: 'rgba(79,156,249,0.1)' },
+  ]
+
+  const statusColors: Record<string, { bg: string; text: string; label: string }> = {
+    PENDING: { bg: 'rgba(245,158,11,0.15)', text: '#fbbf24', label: 'Menunggu' },
+    APPROVED: { bg: 'rgba(16,185,129,0.15)', text: '#34d399', label: 'Disetujui' },
+    REJECTED: { bg: 'rgba(239,68,68,0.15)', text: '#fca5a5', label: 'Ditolak' },
+    RETURNED: { bg: 'rgba(79,156,249,0.15)', text: '#93c5fd', label: 'Dikembalikan' },
+  }
+
+  return (
+    <div className="p-8">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold" style={{ color: '#F0F4FF' }}>
+          Selamat datang, {session?.user.name} 👋
+        </h1>
+        <p className="text-sm mt-1" style={{ color: '#8899BB' }}>Berikut ringkasan aktivitas perpustakaan hari ini</p>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+        {stats.map((stat) => (
+          <div key={stat.label} className="rounded-2xl p-5 border" style={{ background: '#162236', borderColor: '#1E2E45' }}>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-2xl">{stat.icon}</span>
+              <div className="px-2 py-1 rounded-lg text-xs" style={{ background: stat.bg, color: stat.color }}>
+                Live
+              </div>
+            </div>
+            <p className="text-2xl font-bold" style={{ color: stat.color }}>{stat.value}</p>
+            <p className="text-xs mt-1" style={{ color: '#8899BB' }}>{stat.label}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Recent Loans */}
+        <div className="rounded-2xl border overflow-hidden" style={{ background: '#162236', borderColor: '#1E2E45' }}>
+          <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: '#1E2E45' }}>
+            <h2 className="font-semibold text-sm" style={{ color: '#F0F4FF' }}>Pinjaman Terbaru</h2>
+            <Link href="/admin/loans" className="text-xs hover:underline" style={{ color: '#4F9CF9' }}>Lihat semua</Link>
+          </div>
+          <div>
+            {recentLoans.length === 0 ? (
+              <p className="px-5 py-6 text-sm text-center" style={{ color: '#8899BB' }}>Belum ada pinjaman</p>
+            ) : (
+              recentLoans.map((loan) => {
+                const s = statusColors[loan.status] ?? statusColors.PENDING
+                return (
+                  <div key={loan.id} className="px-5 py-3 border-b flex items-center gap-3" style={{ borderColor: '#1E2E45' }}>
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: 'rgba(79,156,249,0.15)', color: '#4F9CF9' }}>
+                      {loan.user.name.charAt(0)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium truncate" style={{ color: '#F0F4FF' }}>{loan.book.title}</p>
+                      <p className="text-xs" style={{ color: '#8899BB' }}>{loan.user.name} · {formatDate(loan.requestedAt)}</p>
+                    </div>
+                    <span className="px-2 py-0.5 rounded-full text-xs" style={{ background: s.bg, color: s.text }}>{s.label}</span>
+                  </div>
+                )
+              })
+            )}
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="rounded-2xl border p-5" style={{ background: '#162236', borderColor: '#1E2E45' }}>
+          <h2 className="font-semibold text-sm mb-4" style={{ color: '#F0F4FF' }}>Aksi Cepat</h2>
+          <QuickActions pendingRequests={pendingRequests} />
+        </div>
+      </div>
+    </div>
+  )
+}
