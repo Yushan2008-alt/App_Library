@@ -24,19 +24,19 @@ export default async function AdminDashboard() {
     ])
 
   const stats = [
-    { label: 'Total Buku', value: totalBooks, icon: '📚', color: '#4F9CF9', bg: 'rgba(79,156,249,0.1)' },
-    { label: 'Total Pengguna', value: totalUsers, icon: '👥', color: '#7B5EA7', bg: 'rgba(123,94,167,0.1)' },
-    { label: 'Pinjaman Aktif', value: activeLoans, icon: '📖', color: '#10b981', bg: 'rgba(16,185,129,0.1)' },
-    { label: 'Menunggu Approval', value: pendingRequests, icon: '⏳', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
-    { label: 'Terlambat', value: overdueLoans, icon: '⚠️', color: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
-    { label: 'Total Denda', value: formatRupiah(fineAggregate._sum.fine ?? 0), icon: '💰', color: '#4F9CF9', bg: 'rgba(79,156,249,0.1)' },
+    { label: 'Total Buku', value: totalBooks, icon: '📚', color: '#4F9CF9', bg: 'rgba(79,156,249,0.12)' },
+    { label: 'Total Pengguna', value: totalUsers, icon: '👥', color: '#7B5EA7', bg: 'rgba(123,94,167,0.12)' },
+    { label: 'Pinjaman Aktif', value: activeLoans, icon: '📖', color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+    { label: 'Menunggu Approval', value: pendingRequests, icon: '⏳', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+    { label: 'Terlambat', value: overdueLoans, icon: '⚠️', color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+    { label: 'Total Denda', value: formatRupiah(fineAggregate._sum.fine ?? 0), icon: '💰', color: '#4F9CF9', bg: 'rgba(79,156,249,0.12)' },
   ]
 
   const statusColors: Record<string, { bg: string; text: string; label: string }> = {
-    PENDING: { bg: 'rgba(245,158,11,0.15)', text: '#fbbf24', label: 'Menunggu' },
-    APPROVED: { bg: 'rgba(16,185,129,0.15)', text: '#34d399', label: 'Disetujui' },
-    REJECTED: { bg: 'rgba(239,68,68,0.15)', text: '#fca5a5', label: 'Ditolak' },
-    RETURNED: { bg: 'rgba(79,156,249,0.15)', text: '#93c5fd', label: 'Dikembalikan' },
+    PENDING:  { bg: 'rgba(245,158,11,0.15)',  text: '#fbbf24', label: 'Menunggu' },
+    APPROVED: { bg: 'rgba(16,185,129,0.15)',  text: '#34d399', label: 'Disetujui' },
+    REJECTED: { bg: 'rgba(239,68,68,0.15)',   text: '#fca5a5', label: 'Ditolak' },
+    RETURNED: { bg: 'rgba(79,156,249,0.15)',  text: '#93c5fd', label: 'Dikembalikan' },
   }
 
   return (
@@ -52,7 +52,7 @@ export default async function AdminDashboard() {
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         {stats.map((stat) => (
-          <div key={stat.label} className="rounded-2xl p-5 border" style={{ background: '#162236', borderColor: '#1E2E45' }}>
+          <div key={stat.label} className="glass rounded-2xl p-5">
             <div className="flex items-center justify-between mb-3">
               <span className="text-2xl">{stat.icon}</span>
               <div className="px-2 py-1 rounded-lg text-xs" style={{ background: stat.bg, color: stat.color }}>
@@ -67,8 +67,8 @@ export default async function AdminDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Loans */}
-        <div className="rounded-2xl border overflow-hidden" style={{ background: '#162236', borderColor: '#1E2E45' }}>
-          <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: '#1E2E45' }}>
+        <div className="glass rounded-2xl overflow-hidden">
+          <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
             <h2 className="font-semibold text-sm" style={{ color: '#F0F4FF' }}>Pinjaman Terbaru</h2>
             <Link href="/admin/loans" className="text-xs hover:underline" style={{ color: '#4F9CF9' }}>Lihat semua</Link>
           </div>
@@ -79,15 +79,15 @@ export default async function AdminDashboard() {
               recentLoans.map((loan) => {
                 const s = statusColors[loan.status] ?? statusColors.PENDING
                 return (
-                  <div key={loan.id} className="px-5 py-3 border-b flex items-center gap-3" style={{ borderColor: '#1E2E45' }}>
-                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: 'rgba(79,156,249,0.15)', color: '#4F9CF9' }}>
+                  <div key={loan.id} className="px-5 py-3 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0" style={{ background: 'rgba(79,156,249,0.18)', color: '#4F9CF9' }}>
                       {loan.user.name.charAt(0)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium truncate" style={{ color: '#F0F4FF' }}>{loan.book.title}</p>
                       <p className="text-xs" style={{ color: '#8899BB' }}>{loan.user.name} · {formatDate(loan.requestedAt)}</p>
                     </div>
-                    <span className="px-2 py-0.5 rounded-full text-xs" style={{ background: s.bg, color: s.text }}>{s.label}</span>
+                    <span className="px-2 py-0.5 rounded-full text-xs flex-shrink-0" style={{ background: s.bg, color: s.text }}>{s.label}</span>
                   </div>
                 )
               })
@@ -96,7 +96,7 @@ export default async function AdminDashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="rounded-2xl border p-5" style={{ background: '#162236', borderColor: '#1E2E45' }}>
+        <div className="glass rounded-2xl p-5">
           <h2 className="font-semibold text-sm mb-4" style={{ color: '#F0F4FF' }}>Aksi Cepat</h2>
           <QuickActions pendingRequests={pendingRequests} />
         </div>

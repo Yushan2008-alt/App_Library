@@ -45,9 +45,6 @@ export default function BooksClient({
 
   return (
     <div>
-      {/* Background bubbles */}
-      <div className="fixed top-20 right-10 w-64 h-64 rounded-full opacity-5 pointer-events-none" style={{ background: '#4F9CF9', filter: 'blur(80px)' }} />
-      <div className="fixed bottom-20 left-10 w-48 h-48 rounded-full opacity-5 pointer-events-none" style={{ background: '#7B5EA7', filter: 'blur(60px)' }} />
 
       {/* Header */}
       <div className="mb-6">
@@ -67,9 +64,9 @@ export default function BooksClient({
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Cari judul atau pengarang..."
             className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none"
-            style={{ background: '#162236', border: '1px solid #1E2E45', color: '#F0F4FF' }}
+            style={{ background: 'rgba(9,22,48,0.7)', border: '1px solid rgba(255,255,255,0.1)', color: '#F0F4FF' }}
             onFocus={(e) => e.target.style.borderColor = '#4F9CF9'}
-            onBlur={(e) => e.target.style.borderColor = '#1E2E45'}
+            onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
           />
         </div>
       </div>
@@ -80,9 +77,9 @@ export default function BooksClient({
           onClick={() => setActiveCategory('')}
           className="px-4 py-1.5 rounded-full text-sm font-medium transition-all"
           style={{
-            background: !activeCategory ? 'rgba(79,156,249,0.2)' : '#162236',
+            background: !activeCategory ? 'rgba(79,156,249,0.2)' : 'rgba(9,22,48,0.5)',
             color: !activeCategory ? '#4F9CF9' : '#8899BB',
-            border: !activeCategory ? '1px solid rgba(79,156,249,0.4)' : '1px solid #1E2E45',
+            border: !activeCategory ? '1px solid rgba(79,156,249,0.4)' : '1px solid rgba(255,255,255,0.08)',
           }}
         >
           Semua
@@ -96,9 +93,9 @@ export default function BooksClient({
               onClick={() => setActiveCategory(active ? '' : cat.slug)}
               className="px-4 py-1.5 rounded-full text-sm font-medium transition-all"
               style={{
-                background: active ? `${color}25` : '#162236',
+                background: active ? `${color}25` : 'rgba(9,22,48,0.5)',
                 color: active ? color : '#8899BB',
-                border: active ? `1px solid ${color}60` : '1px solid #1E2E45',
+                border: active ? `1px solid ${color}60` : '1px solid rgba(255,255,255,0.08)',
               }}
             >
               {cat.name}
@@ -143,8 +140,8 @@ function BookCard({ book, colorIndex }: { book: Book; colorIndex: number }) {
   return (
     <Link
       href={`/user/books/${book.id}`}
-      className="group block rounded-2xl border overflow-hidden transition-all duration-300"
-      style={{ background: '#162236', borderColor: '#1E2E45' }}
+      className="group block rounded-2xl overflow-hidden transition-all duration-300"
+      style={{ background: 'rgba(12,24,50,0.65)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.08)' }}
       onMouseEnter={(e) => {
         e.currentTarget.style.borderColor = `${color}50`
         e.currentTarget.style.boxShadow = `0 0 20px ${color}20`
@@ -157,7 +154,7 @@ function BookCard({ book, colorIndex }: { book: Book; colorIndex: number }) {
       }}
     >
       {/* Cover */}
-      <div className="aspect-[3/4] overflow-hidden" style={{ background: '#1E2E45' }}>
+      <div className="aspect-[3/4] overflow-hidden" style={{ background: 'rgba(14,34,72,0.8)' }}>
         {book.coverImage ? (
           <Image src={book.coverImage} alt={book.title} width={200} height={267} className="object-cover w-full h-full transition-transform duration-300 group-hover:scale-105" />
         ) : (

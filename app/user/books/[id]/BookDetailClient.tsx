@@ -48,10 +48,10 @@ export default function BookDetailClient({ book, existingLoan }: { book: Book; e
         <Link href="/user/books" className="text-sm hover:underline" style={{ color: '#4F9CF9' }}>← Kembali ke Koleksi</Link>
       </div>
 
-      <div className="rounded-2xl border overflow-hidden" style={{ background: '#162236', borderColor: '#1E2E45' }}>
+      <div className="glass rounded-2xl overflow-hidden">
         <div className="flex flex-col md:flex-row">
           {/* Cover */}
-          <div className="w-full md:w-48 flex-shrink-0" style={{ background: '#1E2E45', minHeight: '200px' }}>
+          <div className="w-full md:w-48 flex-shrink-0" style={{ background: 'rgba(14,34,72,0.9)', minHeight: '200px' }}>
             {book.coverImage ? (
               <Image src={book.coverImage} alt={book.title} width={192} height={280} className="object-cover w-full h-full" />
             ) : (

@@ -58,14 +58,14 @@ export default function AdminBooksClient({
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Cari judul atau pengarang..."
             className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none"
-            style={{ background: '#162236', border: '1px solid #1E2E45', color: '#F0F4FF' }}
+            style={{ background: 'rgba(9,22,48,0.7)', border: '1px solid rgba(255,255,255,0.1)', color: '#F0F4FF' }}
           />
         </div>
         <select
           value={filterCat}
           onChange={(e) => setFilterCat(e.target.value)}
           className="px-4 py-2.5 rounded-xl text-sm outline-none"
-          style={{ background: '#162236', border: '1px solid #1E2E45', color: '#F0F4FF' }}
+          style={{ background: 'rgba(9,22,48,0.7)', border: '1px solid rgba(255,255,255,0.1)', color: '#F0F4FF' }}
         >
           <option value="">Semua Kategori</option>
           {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -73,10 +73,10 @@ export default function AdminBooksClient({
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl border overflow-hidden" style={{ background: '#162236', borderColor: '#1E2E45' }}>
+      <div className="glass rounded-2xl overflow-hidden">
         <table className="w-full">
           <thead>
-            <tr style={{ borderBottom: '1px solid #1E2E45' }}>
+            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
               {['Buku', 'Kategori', 'Stok', 'Aksi'].map((h) => (
                 <th key={h} className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: '#8899BB' }}>{h}</th>
               ))}
@@ -93,10 +93,10 @@ export default function AdminBooksClient({
               filtered.map((book, i) => {
                 const catColor = CATEGORY_COLORS[i % CATEGORY_COLORS.length]
                 return (
-                  <tr key={book.id} style={{ borderBottom: '1px solid #1E2E45' }}>
+                  <tr key={book.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                     <td className="px-5 py-3.5">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-14 rounded-lg overflow-hidden flex-shrink-0" style={{ background: '#1E2E45' }}>
+                        <div className="w-10 h-14 rounded-lg overflow-hidden flex-shrink-0" style={{ background: 'rgba(14,34,72,0.8)' }}>
                           {book.coverImage ? (
                             <Image src={book.coverImage} alt={book.title} width={40} height={56} className="object-cover w-full h-full" />
                           ) : (

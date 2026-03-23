@@ -20,14 +20,30 @@ enum LoanStatus {
 }
 
 model User {
-  id            String         @id @default(cuid())
-  name          String
-  email         String         @unique
-  password      String
-  role          Role           @default(USER)
-  createdAt     DateTime       @default(now())
-  loans         Loan[]
-  notifications Notification[]
+  id                 String              @id @default(cuid())
+  name               String
+  email              String              @unique
+  password           String
+  role               Role                @default(USER)
+  isVerified         Boolean             @default(false)
+  createdAt          DateTime            @default(now())
+  loans              Loan[]
+  notifications      Notification[]
+  verificationTokens VerificationToken[]
+}
+
+model VerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  type      String   // "PASSWORD_CHANGE" | "EMAIL_CHANGE"
+  newEmail  String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
 }
 
 model Category {

@@ -62,11 +62,11 @@ export default function AdminSidebar({ user }: AdminSidebarProps) {
 
   return (
     <aside
-      className="fixed left-0 top-0 h-screen w-64 flex flex-col border-r z-40"
-      style={{ background: '#0F1B2D', borderColor: '#1E2E45' }}
+      className="fixed left-0 top-0 h-screen w-64 flex flex-col z-40 glass-dark"
+      style={{ borderRight: '1px solid rgba(255,255,255,0.07)' }}
     >
       {/* Logo */}
-      <div className="px-6 py-5 border-b" style={{ borderColor: '#1E2E45' }}>
+      <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #4F9CF9, #7B5EA7)' }}>
             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -90,9 +90,10 @@ export default function AdminSidebar({ user }: AdminSidebarProps) {
               href={item.href}
               className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
               style={{
-                background: active ? 'rgba(79,156,249,0.15)' : 'transparent',
+                background: active ? 'rgba(79,156,249,0.18)' : 'transparent',
                 color: active ? '#4F9CF9' : '#8899BB',
                 borderLeft: active ? '3px solid #4F9CF9' : '3px solid transparent',
+                boxShadow: active ? '0 0 12px rgba(79,156,249,0.15)' : 'none',
               }}
             >
               {item.icon}
@@ -102,17 +103,19 @@ export default function AdminSidebar({ user }: AdminSidebarProps) {
         })}
       </nav>
 
-      {/* User info + actions */}
-      <div className="px-4 py-4 border-t" style={{ borderColor: '#1E2E45' }}>
+      {/* User info */}
+      <div className="px-4 py-4" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
-              style={{ background: 'linear-gradient(135deg, #4F9CF9, #7B5EA7)' }}>
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0"
+              style={{ background: 'linear-gradient(135deg, #4F9CF9, #7B5EA7)' }}
+            >
               {user.name.charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0">
               <p className="text-xs font-semibold truncate" style={{ color: '#F0F4FF' }}>{user.name}</p>
-              <p className="text-xs truncate" style={{ color: '#8899BB' }}>Admin</p>
+              <p className="text-xs" style={{ color: '#8899BB' }}>Admin</p>
             </div>
           </div>
           <NotificationBell />
@@ -121,7 +124,7 @@ export default function AdminSidebar({ user }: AdminSidebarProps) {
           onClick={() => signOut({ callbackUrl: '/login' })}
           className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-all duration-200"
           style={{ color: '#8899BB' }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; e.currentTarget.style.color = '#fca5a5' }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.12)'; e.currentTarget.style.color = '#fca5a5' }}
           onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#8899BB' }}
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

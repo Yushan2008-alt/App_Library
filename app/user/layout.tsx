@@ -9,7 +9,7 @@ export default async function UserLayout({ children }: { children: React.ReactNo
   if (session.user.role === 'ADMIN') redirect('/admin/dashboard')
 
   return (
-    <div className="min-h-screen" style={{ background: '#0F1B2D' }}>
+    <div className="min-h-screen">
       <UserNavbar user={session.user} />
       <main className="max-w-7xl mx-auto px-4 py-8">
         {children}

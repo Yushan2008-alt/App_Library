@@ -65,7 +65,7 @@ export default function BookForm({
     router.refresh()
   }
 
-  const inputStyle = { background: '#0F1B2D', border: '1px solid #1E2E45', color: '#F0F4FF' }
+  const inputStyle = { background: 'rgba(9,22,48,0.7)', border: '1px solid rgba(255,255,255,0.1)', color: '#F0F4FF' }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
@@ -79,7 +79,7 @@ export default function BookForm({
       <div>
         <label className="block text-sm font-medium mb-2" style={{ color: '#8899BB' }}>Cover Buku</label>
         <div className="flex items-center gap-4">
-          <div className="w-20 h-28 rounded-xl overflow-hidden flex items-center justify-center" style={{ background: '#1E2E45' }}>
+          <div className="w-20 h-28 rounded-xl overflow-hidden flex items-center justify-center" style={{ background: 'rgba(14,34,72,0.8)' }}>
             {preview ? (
               <Image src={preview} alt="preview" width={80} height={112} className="object-cover w-full h-full" />
             ) : (

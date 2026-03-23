@@ -7,7 +7,7 @@ export async function proxy(req: NextRequest) {
 
   const isAdminRoute = pathname.startsWith('/admin')
   const isUserRoute = pathname.startsWith('/user')
-  const isAuthRoute = pathname === '/login' || pathname === '/register'
+  const isAuthRoute = pathname === '/login' || pathname === '/register' || pathname === '/verify-email'
   const isProtected = isAdminRoute || isUserRoute
 
   // Redirect logged-in users away from auth pages
@@ -33,5 +33,5 @@ export async function proxy(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/user/:path*', '/login', '/register'],
+  matcher: ['/admin/:path*', '/user/:path*', '/login', '/register', '/verify-email'],
 }
