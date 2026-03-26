@@ -1,7 +1,7 @@
 'use client'
 
 import { createClient } from '@/lib/supabase/client'
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 
@@ -44,6 +44,13 @@ function SaveButton({ loading, label, loadingLabel, color = '#4F9CF9' }: { loadi
 
 export default function SettingsClient({ user }: Props) {
   const router = useRouter()
+
+  const handleLogout = useCallback(async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push('/login')
+    router.refresh()
+  }, [router])
 
   // Avatar state
   const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl ?? null)
@@ -409,6 +416,33 @@ export default function SettingsClient({ user }: Props) {
               <SaveButton loading={emailLoading} label="Kirim Verifikasi" loadingLabel="Mengirim..." color="#7B5EA7" />
             </form>
           )}
+        </Section>
+
+        {/* Logout */}
+        <Section>
+          <div className="flex items-start gap-3 mb-4">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(239,68,68,0.13)' }}>
+              <svg className="w-4 h-4" fill="none" stroke="#fca5a5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="font-semibold text-base" style={{ color: '#F0F4FF' }}>Keluar dari Akun</h2>
+              <p className="text-sm" style={{ color: '#8899BB' }}>Mengakhiri sesi aktif kamu saat ini</p>
+            </div>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 active:scale-95"
+            style={{ background: 'rgba(239,68,68,0.13)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.25)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.22)'; e.currentTarget.style.boxShadow = '0 0 16px rgba(239,68,68,0.2)' }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.13)'; e.currentTarget.style.boxShadow = 'none' }}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            Keluar
+          </button>
         </Section>
       </div>
     </div>

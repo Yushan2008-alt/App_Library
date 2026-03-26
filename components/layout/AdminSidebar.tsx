@@ -235,8 +235,21 @@ export default function AdminSidebar({ user }: AdminSidebarProps) {
           <span className="text-sm font-bold" style={{ color: '#F0F4FF' }}>Admin Panel</span>
         </div>
 
-        {/* Notification */}
-        <NotificationBell />
+        {/* Notification + Logout */}
+        <div className="flex items-center gap-1">
+          <NotificationBell />
+          <button
+            onClick={handleLogout}
+            className="p-2 rounded-xl transition-colors duration-200 active:scale-95"
+            style={{ color: '#fca5a5', background: 'rgba(239,68,68,0.08)' }}
+            aria-label="Keluar"
+            title="Keluar"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Backdrop overlay — mobile only */}
