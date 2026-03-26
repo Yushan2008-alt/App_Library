@@ -1,15 +1,20 @@
-import { prisma } from '@/lib/prisma'
+import { createClient } from '@/lib/supabase/server'
 import CategoriesClient from './CategoriesClient'
 
 export const dynamic = 'force-dynamic'
 
 export default async function CategoriesPage() {
-  let categories: Awaited<ReturnType<typeof prisma.category.findMany<{ include: { _count: { select: { books: true } } } }>>> = []
+  const supabase = await createClient()
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let categories: any[] = []
+
   try {
-    categories = await prisma.category.findMany({
-      include: { _count: { select: { books: true } } },
-      orderBy: { name: 'asc' },
-    })
+    const { data: catsRaw } = await supabase
+      .from('Category')
+      .select('id, name, slug, books:Book!Book_categoryId_fkey(id)')
+      .order('name', { ascending: true })
+    categories = (catsRaw ?? []).map((c) => ({ ...c, _count: { books: Array.isArray(c.books) ? c.books.length : 0 } }))
   } catch (e) {
     console.error('[admin/categories] DB error:', e)
   }

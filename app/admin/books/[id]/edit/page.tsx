@@ -1,16 +1,25 @@
-import { prisma } from '@/lib/prisma'
+import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import BookForm from '../../BookForm'
 
+export const dynamic = 'force-dynamic'
+
 export default async function EditBookPage(props: PageProps<'/admin/books/[id]/edit'>) {
   const { id } = await props.params
-  let book: Awaited<ReturnType<typeof prisma.book.findUnique>> = null
-  let categories: Awaited<ReturnType<typeof prisma.category.findMany>> = []
+  const supabase = await createClient()
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let book: any = null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let categories: any[] = []
+
   try {
-    ;[book, categories] = await Promise.all([
-      prisma.book.findUnique({ where: { id } }),
-      prisma.category.findMany({ orderBy: { name: 'asc' } }),
+    const [bookRes, catsRes] = await Promise.all([
+      supabase.from('Book').select('id, title, author, description, externalUrl, stock, categoryId, coverImage').eq('id', id).single(),
+      supabase.from('Category').select('id, name, slug').order('name', { ascending: true }),
     ])
+    book = bookRes.data
+    categories = catsRes.data ?? []
   } catch (e) {
     console.error('[admin/books/edit] DB error:', e)
   }

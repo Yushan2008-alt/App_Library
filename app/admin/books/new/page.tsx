@@ -1,12 +1,15 @@
-import { prisma } from '@/lib/prisma'
+import { createClient } from '@/lib/supabase/server'
 import BookForm from '../BookForm'
 
 export const dynamic = 'force-dynamic'
 
 export default async function NewBookPage() {
-  let categories: Awaited<ReturnType<typeof prisma.category.findMany>> = []
+  const supabase = await createClient()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let categories: any[] = []
   try {
-    categories = await prisma.category.findMany({ orderBy: { name: 'asc' } })
+    const { data } = await supabase.from('Category').select('id, name, slug').order('name', { ascending: true })
+    categories = data ?? []
   } catch (e) {
     console.error('[admin/books/new] DB error:', e)
   }

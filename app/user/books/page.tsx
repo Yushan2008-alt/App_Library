@@ -1,30 +1,25 @@
-import { prisma } from '@/lib/prisma'
+import { createClient } from '@/lib/supabase/server'
 import BooksClient from './BooksClient'
 
 export const dynamic = 'force-dynamic'
 
 export default async function UserBooksPage() {
-  let books: Awaited<ReturnType<typeof prisma.book.findMany<{ include: { category: true } }>>> = []
-  let categories: Awaited<ReturnType<typeof prisma.category.findMany>> = []
-  let dbError: string | null = null
-  try {
-    ;[books, categories] = await Promise.all([
-      prisma.book.findMany({ include: { category: true }, orderBy: { createdAt: 'desc' } }),
-      prisma.category.findMany({ orderBy: { name: 'asc' } }),
-    ])
-  } catch (e) {
-    dbError = String(e).slice(0, 500)
-    console.error('[user/books] DB error:', e)
-  }
+  const supabase = await createClient()
 
-  if (dbError) {
-    return (
-      <div className="p-8">
-        <p className="text-sm font-mono p-4 rounded-xl break-all" style={{ background: 'rgba(239,68,68,0.1)', color: '#fca5a5', border: '1px solid rgba(239,68,68,0.2)' }}>
-          DB Error: {dbError}
-        </p>
-      </div>
-    )
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let books: any[] = []
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let categories: any[] = []
+
+  try {
+    const [booksRes, catsRes] = await Promise.all([
+      supabase.from('Book').select('id, title, author, description, coverImage, stock, externalUrl, category:Category!Book_categoryId_fkey(id, name, slug)').order('createdAt', { ascending: false }),
+      supabase.from('Category').select('id, name, slug').order('name', { ascending: true }),
+    ])
+    books = booksRes.data ?? []
+    categories = catsRes.data ?? []
+  } catch (e) {
+    console.error('[user/books] DB error:', e)
   }
 
   return <BooksClient initialBooks={books} categories={categories} />

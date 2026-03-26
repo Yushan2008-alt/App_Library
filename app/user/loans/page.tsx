@@ -1,5 +1,4 @@
-import { getServerUser } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { createClient } from '@/lib/supabase/server'
 import { formatDate, formatRupiah } from '@/lib/utils'
 
 const STATUS = {
@@ -12,15 +11,21 @@ const STATUS = {
 export const dynamic = 'force-dynamic'
 
 export default async function UserLoansPage() {
-  const user = await getServerUser()
+  const supabase = await createClient()
+  const { data: { user: authUser } } = await supabase.auth.getUser()
 
-  let loans: Awaited<ReturnType<typeof prisma.loan.findMany<{ include: { book: { include: { category: true } } } }>>> = []
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let loans: any[] = []
+
   try {
-    loans = await prisma.loan.findMany({
-      where: { userId: user!.id },
-      include: { book: { include: { category: true } } },
-      orderBy: { requestedAt: 'desc' },
-    })
+    if (authUser) {
+      const { data } = await supabase
+        .from('Loan')
+        .select('id, status, fine, requestedAt, dueDate, returnedAt, book:Book!Loan_bookId_fkey(title, author, category:Category!Book_categoryId_fkey(name))')
+        .eq('userId', authUser.id)
+        .order('requestedAt', { ascending: false })
+      loans = data ?? []
+    }
   } catch (e) {
     console.error('[user/loans] DB error:', e)
   }
@@ -48,12 +53,12 @@ export default async function UserLoansPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="px-2 py-0.5 rounded-full text-xs" style={{ background: 'rgba(79,156,249,0.15)', color: '#4F9CF9' }}>
-                        {loan.book.category.name}
+                        {loan.book?.category?.name}
                       </span>
                       <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ background: s.bg, color: s.text }}>{s.label}</span>
                     </div>
-                    <h3 className="font-semibold" style={{ color: '#F0F4FF' }}>{loan.book.title}</h3>
-                    <p className="text-sm" style={{ color: '#8899BB' }}>{loan.book.author}</p>
+                    <h3 className="font-semibold" style={{ color: '#F0F4FF' }}>{loan.book?.title}</h3>
+                    <p className="text-sm" style={{ color: '#8899BB' }}>{loan.book?.author}</p>
                     <div className="flex gap-4 mt-2 text-xs" style={{ color: '#8899BB' }}>
                       <span>Dipinjam: {formatDate(loan.requestedAt)}</span>
                       {loan.dueDate && (

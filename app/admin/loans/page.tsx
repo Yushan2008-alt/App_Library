@@ -1,18 +1,20 @@
-import { prisma } from '@/lib/prisma'
+import { createClient } from '@/lib/supabase/server'
 import AdminLoansClient from './AdminLoansClient'
 
 export const dynamic = 'force-dynamic'
 
 export default async function AdminLoansPage() {
-  let loans: Awaited<ReturnType<typeof prisma.loan.findMany<{ include: { user: { select: { id: true; name: true; email: true } }; book: { include: { category: true } } } }>>> = []
+  const supabase = await createClient()
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let loans: any[] = []
+
   try {
-    loans = await prisma.loan.findMany({
-      include: {
-        user: { select: { id: true, name: true, email: true } },
-        book: { include: { category: true } },
-      },
-      orderBy: { requestedAt: 'desc' },
-    })
+    const { data } = await supabase
+      .from('Loan')
+      .select('id, status, fine, requestedAt, approvedAt, dueDate, returnedAt, user:User!Loan_userId_fkey(id, name, email), book:Book!Loan_bookId_fkey(id, title, author, category:Category!Book_categoryId_fkey(id, name, slug))')
+      .order('requestedAt', { ascending: false })
+    loans = data ?? []
   } catch (e) {
     console.error('[admin/loans] DB error:', e)
   }

@@ -1,17 +1,22 @@
-import { prisma } from '@/lib/prisma'
+import { createClient } from '@/lib/supabase/server'
 import { formatDate } from '@/lib/utils'
 import Link from 'next/link'
 
 export const dynamic = 'force-dynamic'
 
 export default async function AdminUsersPage() {
-  let users: Awaited<ReturnType<typeof prisma.user.findMany<{ include: { _count: { select: { loans: true } } } }>>> = []
+  const supabase = await createClient()
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let users: any[] = []
+
   try {
-    users = await prisma.user.findMany({
-      where: { role: 'USER' },
-      include: { _count: { select: { loans: true } } },
-      orderBy: { createdAt: 'desc' },
-    })
+    const { data } = await supabase
+      .from('User')
+      .select('id, name, email, createdAt, loans:Loan!Loan_userId_fkey(id)')
+      .eq('role', 'USER')
+      .order('createdAt', { ascending: false })
+    users = (data ?? []).map((u) => ({ ...u, _count: { loans: Array.isArray(u.loans) ? u.loans.length : 0 } }))
   } catch (e) {
     console.error('[admin/users] DB error:', e)
   }
@@ -41,7 +46,7 @@ export default async function AdminUsersPage() {
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold" style={{ background: 'linear-gradient(135deg, #4F9CF9, #7B5EA7)', color: 'white' }}>
-                        {user.name.charAt(0).toUpperCase()}
+                        {user.name?.charAt(0).toUpperCase()}
                       </div>
                       <p className="text-sm font-medium" style={{ color: '#F0F4FF' }}>{user.name}</p>
                     </div>

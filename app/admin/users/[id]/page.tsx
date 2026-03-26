@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma'
+import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { formatDate, formatRupiah } from '@/lib/utils'
 import Link from 'next/link'
@@ -10,26 +10,31 @@ const STATUS = {
   RETURNED: { bg: 'rgba(79,156,249,0.15)',  text: '#93c5fd', label: 'Dikembalikan' },
 }
 
+export const dynamic = 'force-dynamic'
+
 export default async function UserDetailPage(props: PageProps<'/admin/users/[id]'>) {
   const { id } = await props.params
-  let user = null
+  const supabase = await createClient()
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let user: any = null
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let loans: any[] = []
+
   try {
-    user = await prisma.user.findUnique({
-      where: { id },
-      include: {
-        loans: {
-          include: { book: { select: { title: true, author: true } } },
-          orderBy: { requestedAt: 'desc' },
-        },
-      },
-    })
+    const [userRes, loansRes] = await Promise.all([
+      supabase.from('User').select('id, name, email, role, createdAt').eq('id', id).single(),
+      supabase.from('Loan').select('id, status, fine, requestedAt, dueDate, book:Book!Loan_bookId_fkey(title, author)').eq('userId', id).order('requestedAt', { ascending: false }),
+    ])
+    user = userRes.data
+    loans = loansRes.data ?? []
   } catch (e) {
     console.error('[admin/users/id] DB error:', e)
   }
 
   if (!user || user.role !== 'USER') notFound()
 
-  const totalFine = user.loans.reduce((sum, l) => sum + l.fine, 0)
+  const totalFine = loans.reduce((sum: number, l: { fine: number }) => sum + (l.fine ?? 0), 0)
 
   return (
     <div className="p-8 max-w-3xl">
@@ -39,7 +44,7 @@ export default async function UserDetailPage(props: PageProps<'/admin/users/[id]
 
       <div className="rounded-2xl border p-6 mb-6 flex items-center gap-4" style={{ background: '#162236', borderColor: '#1E2E45' }}>
         <div className="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold" style={{ background: 'linear-gradient(135deg, #4F9CF9, #7B5EA7)', color: 'white' }}>
-          {user.name.charAt(0)}
+          {user.name?.charAt(0)}
         </div>
         <div>
           <h1 className="text-xl font-bold" style={{ color: '#F0F4FF' }}>{user.name}</h1>
@@ -54,7 +59,7 @@ export default async function UserDetailPage(props: PageProps<'/admin/users/[id]
 
       <h2 className="text-lg font-semibold mb-4" style={{ color: '#F0F4FF' }}>Riwayat Pinjaman</h2>
       <div className="rounded-2xl border overflow-hidden" style={{ background: '#162236', borderColor: '#1E2E45' }}>
-        {user.loans.length === 0 ? (
+        {loans.length === 0 ? (
           <p className="px-5 py-8 text-center text-sm" style={{ color: '#8899BB' }}>Belum ada riwayat pinjaman</p>
         ) : (
           <table className="w-full">
@@ -66,13 +71,13 @@ export default async function UserDetailPage(props: PageProps<'/admin/users/[id]
               </tr>
             </thead>
             <tbody>
-              {user.loans.map((loan) => {
+              {loans.map((loan) => {
                 const s = STATUS[loan.status as keyof typeof STATUS] ?? STATUS.PENDING
                 return (
                   <tr key={loan.id} style={{ borderBottom: '1px solid #1E2E45' }}>
                     <td className="px-4 py-3">
-                      <p className="text-sm font-medium" style={{ color: '#F0F4FF' }}>{loan.book.title}</p>
-                      <p className="text-xs" style={{ color: '#8899BB' }}>{loan.book.author}</p>
+                      <p className="text-sm font-medium" style={{ color: '#F0F4FF' }}>{loan.book?.title}</p>
+                      <p className="text-xs" style={{ color: '#8899BB' }}>{loan.book?.author}</p>
                     </td>
                     <td className="px-4 py-3 text-xs" style={{ color: '#8899BB' }}>{formatDate(loan.requestedAt)}</td>
                     <td className="px-4 py-3 text-xs" style={{ color: '#8899BB' }}>{loan.dueDate ? formatDate(loan.dueDate) : '-'}</td>

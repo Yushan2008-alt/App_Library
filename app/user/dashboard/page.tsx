@@ -1,6 +1,4 @@
 import { createClient } from '@/lib/supabase/server'
-import { prisma } from '@/lib/prisma'
-import type { Prisma } from '@/app/generated/prisma/client'
 import { formatDate } from '@/lib/utils'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
@@ -12,30 +10,27 @@ const STATUS = {
   RETURNED: { bg: 'rgba(79,156,249,0.15)',  text: '#93c5fd', label: 'Dikembalikan' },
 }
 
+export const dynamic = 'force-dynamic'
+
 export default async function UserDashboard() {
-  // Use Supabase directly (fast cookie read, no DB) — layout already ran getServerUser()
   const supabase = await createClient()
   const { data: { user: authUser } } = await supabase.auth.getUser()
   if (!authUser) redirect('/login')
   const userId = authUser.id
   const displayName = authUser.user_metadata?.full_name ?? authUser.user_metadata?.name ?? authUser.email?.split('@')[0] ?? 'User'
 
-  let loans: Array<Prisma.LoanGetPayload<{ include: { book: { select: { title: true; author: true } } } }>> = []
-  let notifications: Awaited<ReturnType<typeof prisma.notification.findMany>> = []
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let loans: any[] = []
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let notifications: any[] = []
 
   try {
-    ;[loans, notifications] = await Promise.all([
-      prisma.loan.findMany({
-        where: { userId, status: { in: ['PENDING', 'APPROVED'] } },
-        include: { book: { select: { title: true, author: true } } },
-        orderBy: { requestedAt: 'desc' },
-      }),
-      prisma.notification.findMany({
-        where: { userId, isRead: false },
-        orderBy: { createdAt: 'desc' },
-        take: 5,
-      }),
+    const [loansRes, notifsRes] = await Promise.all([
+      supabase.from('Loan').select('id, status, dueDate, requestedAt, book:Book!Loan_bookId_fkey(title, author)').eq('userId', userId).in('status', ['PENDING', 'APPROVED']).order('requestedAt', { ascending: false }),
+      supabase.from('Notification').select('id, message, createdAt, isRead').eq('userId', userId).eq('isRead', false).order('createdAt', { ascending: false }).limit(5),
     ])
+    loans = loansRes.data ?? []
+    notifications = notifsRes.data ?? []
   } catch (e) {
     console.error('[dashboard] DB error:', e)
   }
@@ -61,7 +56,6 @@ export default async function UserDashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Active Loans */}
         <div className="rounded-2xl border overflow-hidden" style={{ background: '#162236', borderColor: '#1E2E45' }}>
           <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: '#1E2E45' }}>
             <h2 className="font-semibold text-sm" style={{ color: '#F0F4FF' }}>Pinjaman Saya</h2>
@@ -82,8 +76,8 @@ export default async function UserDashboard() {
                 <div key={loan.id} className="px-5 py-3.5 border-b" style={{ borderColor: '#1E2E45' }}>
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate" style={{ color: '#F0F4FF' }}>{loan.book.title}</p>
-                      <p className="text-xs" style={{ color: '#8899BB' }}>{loan.book.author}</p>
+                      <p className="text-sm font-medium truncate" style={{ color: '#F0F4FF' }}>{loan.book?.title}</p>
+                      <p className="text-xs" style={{ color: '#8899BB' }}>{loan.book?.author}</p>
                       {loan.dueDate && (
                         <p className="text-xs mt-0.5" style={{ color: isOverdue ? '#fca5a5' : '#8899BB' }}>
                           Jatuh tempo: {formatDate(loan.dueDate)} {isOverdue && '⚠️ Terlambat!'}
@@ -98,7 +92,6 @@ export default async function UserDashboard() {
           )}
         </div>
 
-        {/* Notifications */}
         <div className="rounded-2xl border overflow-hidden" style={{ background: '#162236', borderColor: '#1E2E45' }}>
           <div className="px-5 py-4 border-b" style={{ borderColor: '#1E2E45' }}>
             <h2 className="font-semibold text-sm" style={{ color: '#F0F4FF' }}>Notifikasi Terbaru</h2>

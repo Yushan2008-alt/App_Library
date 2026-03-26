@@ -1,17 +1,24 @@
-import { prisma } from '@/lib/prisma'
+import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import AdminBooksClient from './AdminBooksClient'
 
 export const dynamic = 'force-dynamic'
 
 export default async function AdminBooksPage() {
-  let books: Awaited<ReturnType<typeof prisma.book.findMany<{ include: { category: true } }>>> = []
-  let categories: Awaited<ReturnType<typeof prisma.category.findMany>> = []
+  const supabase = await createClient()
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let books: any[] = []
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let categories: any[] = []
+
   try {
-    ;[books, categories] = await Promise.all([
-      prisma.book.findMany({ include: { category: true }, orderBy: { createdAt: 'desc' } }),
-      prisma.category.findMany({ orderBy: { name: 'asc' } }),
+    const [booksRes, catsRes] = await Promise.all([
+      supabase.from('Book').select('id, title, author, description, coverImage, externalUrl, stock, categoryId, category:Category!Book_categoryId_fkey(id, name, slug)').order('createdAt', { ascending: false }),
+      supabase.from('Category').select('id, name, slug').order('name', { ascending: true }),
     ])
+    books = booksRes.data ?? []
+    categories = catsRes.data ?? []
   } catch (e) {
     console.error('[admin/books] DB error:', e)
   }
