@@ -74,6 +74,7 @@ export default function AdminSidebar({ user }: AdminSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl)
+  const [open, setOpen] = useState(false)
   const displayName = user.username || user.name
 
   useEffect(() => {
@@ -84,6 +85,21 @@ export default function AdminSidebar({ user }: AdminSidebarProps) {
     return () => window.removeEventListener('avatarUpdated', handleAvatarUpdate)
   }, [])
 
+  // Close sidebar on route change (mobile)
+  useEffect(() => {
+    setOpen(false)
+  }, [pathname])
+
+  // Prevent body scroll when sidebar is open on mobile
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [open])
+
   async function handleLogout() {
     const supabase = createClient()
     await supabase.auth.signOut()
@@ -91,13 +107,14 @@ export default function AdminSidebar({ user }: AdminSidebarProps) {
     router.refresh()
   }
 
-  return (
+  const sidebarContent = (
     <aside
-      className="fixed left-0 top-0 h-screen w-64 flex flex-col z-40 glass-dark"
+      className={`fixed left-0 top-0 h-screen w-64 flex flex-col z-40 glass-dark transition-transform duration-300
+        md:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'}`}
       style={{ borderRight: '1px solid rgba(255,255,255,0.07)' }}
     >
       {/* Logo */}
-      <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+      <div className="px-6 py-5 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center transition-transform duration-200 hover:scale-110"
             style={{ background: 'linear-gradient(135deg, #4F9CF9, #7B5EA7)' }}>
@@ -110,6 +127,17 @@ export default function AdminSidebar({ user }: AdminSidebarProps) {
             <p className="text-xs" style={{ color: '#8899BB' }}>Admin Panel</p>
           </div>
         </div>
+        {/* Close button — mobile only */}
+        <button
+          className="md:hidden p-1.5 rounded-lg transition-colors duration-200"
+          style={{ color: '#8899BB' }}
+          onClick={() => setOpen(false)}
+          aria-label="Tutup menu"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
 
       {/* Navigation */}
@@ -175,5 +203,52 @@ export default function AdminSidebar({ user }: AdminSidebarProps) {
         </button>
       </div>
     </aside>
+  )
+
+  return (
+    <>
+      {/* Mobile top bar */}
+      <div
+        className="md:hidden fixed top-0 left-0 right-0 z-30 flex items-center justify-between px-4 h-14 glass-dark"
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}
+      >
+        {/* Hamburger */}
+        <button
+          onClick={() => setOpen(true)}
+          className="p-2 rounded-xl transition-colors duration-200 active:scale-95"
+          style={{ color: '#4F9CF9', background: 'rgba(79,156,249,0.1)' }}
+          aria-label="Buka menu"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+
+        {/* Logo center */}
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+            style={{ background: 'linear-gradient(135deg, #4F9CF9, #7B5EA7)' }}>
+            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            </svg>
+          </div>
+          <span className="text-sm font-bold" style={{ color: '#F0F4FF' }}>Admin Panel</span>
+        </div>
+
+        {/* Notification */}
+        <NotificationBell />
+      </div>
+
+      {/* Backdrop overlay — mobile only */}
+      {open && (
+        <div
+          className="md:hidden fixed inset-0 z-30 bg-black/60 backdrop-blur-sm"
+          onClick={() => setOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      {sidebarContent}
+    </>
   )
 }

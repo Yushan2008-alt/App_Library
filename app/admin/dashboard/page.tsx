@@ -51,7 +51,7 @@ export default async function AdminDashboard() {
   }
 
   return (
-    <div className="p-8">
+    <div className="px-4 py-6 md:p-8">
       <div className="mb-8">
         <h1 className="text-2xl font-bold" style={{ color: '#F0F4FF' }}>
           Selamat datang, {user?.name} 👋

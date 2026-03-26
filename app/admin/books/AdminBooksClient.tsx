@@ -47,7 +47,7 @@ export default function AdminBooksClient({
   return (
     <>
       {/* Search & Filter */}
-      <div className="flex gap-3 mb-6">
+      <div className="flex flex-col sm:flex-row gap-3 mb-6">
         <div className="flex-1 relative">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#8899BB' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0" />
@@ -74,7 +74,8 @@ export default function AdminBooksClient({
 
       {/* Table */}
       <div className="glass rounded-2xl overflow-hidden">
-        <table className="w-full">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[520px]">
           <thead>
             <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
               {['Buku', 'Kategori', 'Stok', 'Aksi'].map((h) => (
@@ -144,6 +145,7 @@ export default function AdminBooksClient({
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </>
   )

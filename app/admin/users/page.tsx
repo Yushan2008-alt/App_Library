@@ -22,14 +22,15 @@ export default async function AdminUsersPage() {
   }
 
   return (
-    <div className="p-8">
+    <div className="px-4 py-6 md:p-8">
       <div className="mb-8">
         <h1 className="text-2xl font-bold" style={{ color: '#F0F4FF' }}>Manajemen Pengguna</h1>
         <p className="text-sm mt-1" style={{ color: '#8899BB' }}>{users.length} pengguna terdaftar</p>
       </div>
 
       <div className="rounded-2xl border overflow-hidden" style={{ background: '#162236', borderColor: '#1E2E45' }}>
-        <table className="w-full">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[560px]">
           <thead>
             <tr style={{ borderBottom: '1px solid #1E2E45' }}>
               {['Pengguna', 'Email', 'Total Pinjaman', 'Bergabung', 'Aksi'].map((h) => (
@@ -68,6 +69,7 @@ export default async function AdminUsersPage() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   )
