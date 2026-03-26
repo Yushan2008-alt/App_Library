@@ -1,8 +1,20 @@
 import { prisma } from '@/lib/prisma'
 import { getServerUser } from '@/lib/auth'
 import { NextRequest } from 'next/server'
-import { writeFile, unlink } from 'fs/promises'
-import path from 'path'
+import { createClient } from '@/lib/supabase/server'
+
+/** Extract storage path from a Supabase Storage public URL */
+function extractStoragePath(url: string, bucket: string): string | null {
+  try {
+    const marker = `/storage/v1/object/public/${bucket}/`
+    const idx = url.indexOf(marker)
+    if (idx === -1) return null
+    // Strip query string (cache-buster)
+    return url.slice(idx + marker.length).split('?')[0]
+  } catch {
+    return null
+  }
+}
 
 export async function GET(_req: NextRequest, ctx: RouteContext<'/api/books/[id]'>) {
   const { id } = await ctx.params
@@ -41,19 +53,32 @@ export async function PUT(request: NextRequest, ctx: RouteContext<'/api/books/[i
     if (!existing) return Response.json({ error: 'Buku tidak ditemukan' }, { status: 404 })
 
     let coverImage = coverImageUrl !== null ? (coverImageUrl || null) : existing.coverImage
+
     if (coverFile && coverFile.size > 0) {
+      const supabase = await createClient()
+      const ext = coverFile.name.split('.').pop()?.toLowerCase() || 'jpg'
+      const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+
       const bytes = await coverFile.arrayBuffer()
-      const buffer = Buffer.from(bytes)
-      const filename = `${Date.now()}-${coverFile.name.replace(/\s/g, '_')}`
-      const uploadPath = path.join(process.cwd(), 'public', 'uploads', filename)
-      await writeFile(uploadPath, buffer)
-      // Delete old cover
-      if (existing.coverImage) {
-        try {
-          await unlink(path.join(process.cwd(), 'public', existing.coverImage))
-        } catch {}
+      const { error: uploadError } = await supabase.storage
+        .from('book-covers')
+        .upload(filename, bytes, { contentType: coverFile.type, upsert: false })
+
+      if (uploadError) {
+        console.error('Cover upload error:', uploadError)
+        return Response.json({ error: 'Gagal mengupload cover buku.' }, { status: 500 })
       }
-      coverImage = `/uploads/${filename}`
+
+      // Hapus cover lama dari Supabase Storage (jika ada)
+      if (existing.coverImage) {
+        const oldPath = extractStoragePath(existing.coverImage, 'book-covers')
+        if (oldPath) {
+          await supabase.storage.from('book-covers').remove([oldPath]).catch(() => {})
+        }
+      }
+
+      const { data: urlData } = supabase.storage.from('book-covers').getPublicUrl(filename)
+      coverImage = urlData.publicUrl
     }
 
     const book = await prisma.book.update({
@@ -86,10 +111,13 @@ export async function DELETE(_req: NextRequest, ctx: RouteContext<'/api/books/[i
     return Response.json({ error: 'Buku masih memiliki pinjaman aktif' }, { status: 400 })
   }
 
+  // Hapus cover dari Supabase Storage jika ada
   if (existing.coverImage) {
-    try {
-      await unlink(path.join(process.cwd(), 'public', existing.coverImage))
-    } catch {}
+    const oldPath = extractStoragePath(existing.coverImage, 'book-covers')
+    if (oldPath) {
+      const supabase = await createClient()
+      await supabase.storage.from('book-covers').remove([oldPath]).catch(() => {})
+    }
   }
 
   await prisma.book.delete({ where: { id } })

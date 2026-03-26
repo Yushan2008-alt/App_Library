@@ -1,9 +1,7 @@
 import { getServerUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextRequest, NextResponse } from 'next/server'
-import { writeFile, unlink } from 'fs/promises'
-import path from 'path'
-import { existsSync } from 'fs'
+import { createClient } from '@/lib/supabase/server'
 
 export async function POST(request: NextRequest) {
   const user = await getServerUser()
@@ -18,7 +16,10 @@ export async function POST(request: NextRequest) {
 
   const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
   if (!allowedTypes.includes(file.type)) {
-    return NextResponse.json({ error: 'Format tidak didukung. Gunakan JPG, PNG, WEBP, atau GIF.' }, { status: 400 })
+    return NextResponse.json(
+      { error: 'Format tidak didukung. Gunakan JPG, PNG, WEBP, atau GIF.' },
+      { status: 400 }
+    )
   }
 
   if (file.size > 5 * 1024 * 1024) {
@@ -27,22 +28,28 @@ export async function POST(request: NextRequest) {
 
   const ext = file.type.split('/')[1].replace('jpeg', 'jpg')
   const filename = `${user.id}.${ext}`
-  const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'avatars')
-  const filepath = path.join(uploadDir, filename)
-
-  // Delete old avatar file if it's a locally uploaded one (different extension)
-  if (user.avatarUrl?.startsWith('/uploads/avatars/')) {
-    const oldFilename = path.basename(user.avatarUrl)
-    const oldPath = path.join(uploadDir, oldFilename)
-    if (oldFilename !== filename && existsSync(oldPath)) {
-      await unlink(oldPath).catch(() => {})
-    }
-  }
 
   const bytes = await file.arrayBuffer()
-  await writeFile(filepath, Buffer.from(bytes))
+  const supabase = await createClient()
 
-  const avatarUrl = `/uploads/avatars/${filename}`
+  // Upload ke Supabase Storage (upsert = overwrite jika sudah ada)
+  const { error: uploadError } = await supabase.storage
+    .from('avatars')
+    .upload(filename, bytes, {
+      contentType: file.type,
+      upsert: true,
+    })
+
+  if (uploadError) {
+    console.error('Storage upload error:', uploadError)
+    return NextResponse.json({ error: 'Gagal mengupload foto profil.' }, { status: 500 })
+  }
+
+  // Ambil public URL
+  const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filename)
+  // Tambahkan cache-buster agar browser reload gambar baru
+  const avatarUrl = `${urlData.publicUrl}?t=${Date.now()}`
+
   const updated = await prisma.user.update({
     where: { id: user.id },
     data: { avatarUrl },

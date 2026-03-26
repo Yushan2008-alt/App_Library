@@ -101,5 +101,32 @@ Fiksi, Teknologi, Sains, Sejarah, Seni & Budaya, Komik & Manga, Filsafat
 - **Navigasi** — "Pengaturan" dipindahkan dari navbar user ke dalam dropdown ≡ (hamburger menu). Admin akses settings via sidebar.
 - **Animasi** — semua tombol punya `active:scale-95`, link punya `hover:scale-105`, transisi `duration-200`
 
-## Deployment
-Lihat `README.md` untuk instruksi lengkap (lokal, Docker, Vercel, VPS).
+## Supabase Storage
+File upload (avatar & cover buku) disimpan di **Supabase Storage**, bukan filesystem lokal.
+- Bucket `avatars` — public, max 5MB, format: JPG/PNG/WEBP/GIF
+- Bucket `book-covers` — public, max 10MB, format: JPG/PNG/WEBP/GIF
+- API avatar: `POST /api/user/avatar` — upload ke bucket `avatars`, nama file `{userId}.{ext}`, upsert=true
+- API cover buku: via `POST /api/books` dan `PUT /api/books/[id]` — upload ke bucket `book-covers`
+- Menggunakan `createClient()` dari `lib/supabase/server.ts` (session-based, bukan service role)
+- Public URL: `https://PROJECT_REF.supabase.co/storage/v1/object/public/{bucket}/{filename}`
+
+## Deployment (Vercel)
+Build command: `prisma generate && next build` (sudah di-set di `package.json`)
+- `app/generated/prisma` ada di `.gitignore` → di-generate otomatis saat build
+- File upload sudah pakai Supabase Storage (bukan filesystem lokal) → kompatibel dengan Vercel serverless
+
+### Environment Variables yang wajib di-set di Vercel:
+| Variable | Keterangan |
+|---|---|
+| `DATABASE_URL` | Supabase pooler URL |
+| `DIRECT_URL` | Supabase direct URL |
+| `NEXT_PUBLIC_SUPABASE_URL` | URL project Supabase |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Anon key Supabase |
+| `SUPABASE_SERVICE_ROLE_KEY` | Service role key (Settings > API) |
+| `FINE_PER_DAY` | Denda per hari (default: 5000) |
+
+### Setelah deploy, update di Supabase Dashboard:
+1. Authentication → URL Configuration → Site URL: `https://your-app.vercel.app`
+2. Authentication → URL Configuration → Redirect URLs: tambah `https://your-app.vercel.app/auth/callback`
+3. Google OAuth → Authorized redirect URIs: tambah `https://bzyuyshzmdcfrajlygvv.supabase.co/auth/v1/callback` (sudah ada)
+4. Google Cloud Console → tambah `https://your-app.vercel.app` ke Authorized JavaScript origins

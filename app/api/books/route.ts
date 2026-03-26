@@ -1,8 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { getServerUser } from '@/lib/auth'
 import { NextRequest } from 'next/server'
-import { writeFile } from 'fs/promises'
-import path from 'path'
+import { createClient } from '@/lib/supabase/server'
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -64,13 +63,24 @@ export async function POST(request: NextRequest) {
     }
 
     let coverImage: string | null = coverImageUrl || null
+
     if (coverFile && coverFile.size > 0) {
+      const supabase = await createClient()
+      const ext = coverFile.name.split('.').pop()?.toLowerCase() || 'jpg'
+      const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+
       const bytes = await coverFile.arrayBuffer()
-      const buffer = Buffer.from(bytes)
-      const filename = `${Date.now()}-${coverFile.name.replace(/\s/g, '_')}`
-      const uploadPath = path.join(process.cwd(), 'public', 'uploads', filename)
-      await writeFile(uploadPath, buffer)
-      coverImage = `/uploads/${filename}`
+      const { error: uploadError } = await supabase.storage
+        .from('book-covers')
+        .upload(filename, bytes, { contentType: coverFile.type, upsert: false })
+
+      if (uploadError) {
+        console.error('Cover upload error:', uploadError)
+        return Response.json({ error: 'Gagal mengupload cover buku.' }, { status: 500 })
+      }
+
+      const { data: urlData } = supabase.storage.from('book-covers').getPublicUrl(filename)
+      coverImage = urlData.publicUrl
     }
 
     const book = await prisma.book.create({
