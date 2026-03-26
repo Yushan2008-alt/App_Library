@@ -1,15 +1,13 @@
-import { PrismaMariaDb } from '@prisma/adapter-mariadb'
+import { Pool } from 'pg'
+import { PrismaPg } from '@prisma/adapter-pg'
 import { PrismaClient } from '@/app/generated/prisma/client'
 
 function createPrismaClient() {
-  const url = new URL(process.env.DATABASE_URL!)
-  const adapter = new PrismaMariaDb({
-    host: url.hostname,
-    port: parseInt(url.port || '3306'),
-    user: decodeURIComponent(url.username) || 'root',
-    password: decodeURIComponent(url.password) || '',
-    database: url.pathname.slice(1),
+  const pool = new Pool({
+    connectionString: process.env.DIRECT_URL ?? process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false },
   })
+  const adapter = new PrismaPg(pool)
   return new PrismaClient({ adapter })
 }
 

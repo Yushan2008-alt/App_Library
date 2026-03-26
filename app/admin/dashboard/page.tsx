@@ -1,12 +1,11 @@
 import { prisma } from '@/lib/prisma'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { getServerUser } from '@/lib/auth'
 import { formatRupiah, formatDate } from '@/lib/utils'
 import Link from 'next/link'
 import QuickActions from './QuickActions'
 
 export default async function AdminDashboard() {
-  const session = await getServerSession(authOptions)
+  const user = await getServerUser()
 
   const [totalBooks, totalUsers, activeLoans, pendingRequests, overdueLoans, fineAggregate, recentLoans] =
     await Promise.all([
@@ -44,7 +43,7 @@ export default async function AdminDashboard() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold" style={{ color: '#F0F4FF' }}>
-          Selamat datang, {session?.user.name} 👋
+          Selamat datang, {user?.name} 👋
         </h1>
         <p className="text-sm mt-1" style={{ color: '#8899BB' }}>Berikut ringkasan aktivitas perpustakaan hari ini</p>
       </div>

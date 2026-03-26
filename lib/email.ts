@@ -6,11 +6,12 @@ const from = process.env.RESEND_FROM_EMAIL ?? 'onboarding@resend.dev'
 export async function sendRegistrationVerificationEmail(to: string, name: string, token: string) {
   const verifyUrl = `${process.env.NEXTAUTH_URL}/verify-email?token=${token}`
 
-  await resend.emails.send({
-    from,
-    to,
-    subject: 'Verifikasi Akun — App-Library',
-    html: `
+  try {
+    await resend.emails.send({
+      from,
+      to,
+      subject: 'Verifikasi Akun — App-Library',
+      html: `
       <!DOCTYPE html>
       <html>
       <head><meta charset="utf-8"></head>
@@ -54,17 +55,21 @@ export async function sendRegistrationVerificationEmail(to: string, name: string
       </body>
       </html>
     `,
-  })
+    })
+  } catch (err) {
+    console.error('[Email] sendRegistrationVerificationEmail failed:', err)
+  }
 }
 
 export async function sendPasswordChangeEmail(to: string, name: string, token: string) {
   const verifyUrl = `${process.env.NEXTAUTH_URL}/user/settings/verify?token=${token}&type=password`
 
-  await resend.emails.send({
-    from,
-    to,
-    subject: 'Verifikasi Perubahan Password — App-Library',
-    html: `
+  try {
+    await resend.emails.send({
+      from,
+      to,
+      subject: 'Verifikasi Perubahan Password — App-Library',
+      html: `
       <!DOCTYPE html>
       <html>
       <head><meta charset="utf-8"></head>
@@ -109,17 +114,21 @@ export async function sendPasswordChangeEmail(to: string, name: string, token: s
       </body>
       </html>
     `,
-  })
+    })
+  } catch (err) {
+    console.error('[Email] sendPasswordChangeEmail failed:', err)
+  }
 }
 
 export async function sendEmailChangeEmail(to: string, name: string, token: string, newEmail: string) {
   const verifyUrl = `${process.env.NEXTAUTH_URL}/user/settings/verify?token=${token}&type=email`
 
-  await resend.emails.send({
-    from,
-    to,
-    subject: 'Verifikasi Perubahan Email — App-Library',
-    html: `
+  try {
+    await resend.emails.send({
+      from,
+      to,
+      subject: 'Verifikasi Perubahan Email — App-Library',
+      html: `
       <!DOCTYPE html>
       <html>
       <head><meta charset="utf-8"></head>
@@ -166,5 +175,8 @@ export async function sendEmailChangeEmail(to: string, name: string, token: stri
       </body>
       </html>
     `,
-  })
+    })
+  } catch (err) {
+    console.error('[Email] sendEmailChangeEmail failed:', err)
+  }
 }

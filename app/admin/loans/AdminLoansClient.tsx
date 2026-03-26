@@ -18,13 +18,24 @@ const STATUS = {
   RETURNED: { bg: 'rgba(79,156,249,0.15)',  text: '#93c5fd', label: 'Dikembalikan' },
 } as const
 
+const PAGE_SIZE = 15
+
 export default function AdminLoansClient({ initialLoans }: { initialLoans: Loan[] }) {
   const router = useRouter()
   const [loans, setLoans] = useState(initialLoans)
   const [filter, setFilter] = useState('ALL')
   const [loading, setLoading] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
 
   const filtered = filter === 'ALL' ? loans : loans.filter((l) => l.status === filter)
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const currentPage = Math.min(page, totalPages)
+  const paginated = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
+
+  function handleFilterChange(tab: string) {
+    setFilter(tab)
+    setPage(1)
+  }
 
   async function action(id: string, type: 'approve' | 'reject' | 'return') {
     setLoading(id + type)
@@ -48,7 +59,7 @@ export default function AdminLoansClient({ initialLoans }: { initialLoans: Loan[
           return (
             <button
               key={tab}
-              onClick={() => setFilter(tab)}
+              onClick={() => handleFilterChange(tab)}
               className="px-4 py-2 rounded-full text-sm font-medium transition-all"
               style={{
                 background: active ? 'rgba(79,156,249,0.2)' : '#162236',
@@ -74,10 +85,10 @@ export default function AdminLoansClient({ initialLoans }: { initialLoans: Loan[
               </tr>
             </thead>
             <tbody>
-              {filtered.length === 0 ? (
+              {paginated.length === 0 ? (
                 <tr><td colSpan={7} className="px-5 py-12 text-center text-sm" style={{ color: '#8899BB' }}>Tidak ada data</td></tr>
               ) : (
-                filtered.map((loan) => {
+                paginated.map((loan) => {
                   const s = STATUS[loan.status as keyof typeof STATUS] ?? STATUS.PENDING
                   const isOverdue = loan.status === 'APPROVED' && loan.dueDate && new Date(loan.dueDate) < new Date()
                   return (
@@ -146,6 +157,58 @@ export default function AdminLoansClient({ initialLoans }: { initialLoans: Loan[
           </table>
         </div>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-4">
+          <p className="text-xs" style={{ color: '#8899BB' }}>
+            Menampilkan {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} dari {filtered.length} pinjaman
+          </p>
+          <div className="flex gap-1.5">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-40"
+              style={{ background: '#162236', color: '#8899BB', border: '1px solid #1E2E45' }}
+            >
+              ← Prev
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+              .reduce<(number | string)[]>((acc, p, idx, arr) => {
+                if (idx > 0 && (p as number) - (arr[idx - 1] as number) > 1) acc.push('…')
+                acc.push(p)
+                return acc
+              }, [])
+              .map((p, idx) =>
+                typeof p === 'string' ? (
+                  <span key={`ellipsis-${idx}`} className="px-2 py-1.5 text-xs" style={{ color: '#8899BB' }}>…</span>
+                ) : (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                    style={{
+                      background: currentPage === p ? 'rgba(79,156,249,0.2)' : '#162236',
+                      color: currentPage === p ? '#4F9CF9' : '#8899BB',
+                      border: currentPage === p ? '1px solid rgba(79,156,249,0.4)' : '1px solid #1E2E45',
+                    }}
+                  >
+                    {p}
+                  </button>
+                )
+              )}
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-40"
+              style={{ background: '#162236', color: '#8899BB', border: '1px solid #1E2E45' }}
+            >
+              Next →
+            </button>
+          </div>
+        </div>
+      )}
     </>
   )
 }

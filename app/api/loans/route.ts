@@ -1,12 +1,11 @@
 import { prisma } from '@/lib/prisma'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { getServerUser } from '@/lib/auth'
 import { createNotificationsForAdmins } from '@/lib/notifications'
 import { NextRequest } from 'next/server'
 
 export async function GET(request: NextRequest) {
-  const session = await getServerSession(authOptions)
-  if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+  const user = await getServerUser()
+  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { searchParams } = new URL(request.url)
   const status = searchParams.get('status')
@@ -14,9 +13,9 @@ export async function GET(request: NextRequest) {
   const limit = Number(searchParams.get('limit') ?? 20)
 
   const where: Record<string, unknown> =
-    session.user.role === 'ADMIN'
+    user.role === 'ADMIN'
       ? status ? { status } : {}
-      : { userId: session.user.id, ...(status ? { status } : {}) }
+      : { userId: user.id, ...(status ? { status } : {}) }
 
   const [loans, total] = await Promise.all([
     prisma.loan.findMany({
@@ -36,8 +35,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'USER') {
+  const user = await getServerUser()
+  if (!user || user.role !== 'USER') {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -50,7 +49,7 @@ export async function POST(request: NextRequest) {
 
   const existing = await prisma.loan.findFirst({
     where: {
-      userId: session.user.id,
+      userId: user.id,
       bookId,
       status: { in: ['PENDING', 'APPROVED'] },
     },
@@ -58,12 +57,12 @@ export async function POST(request: NextRequest) {
   if (existing) return Response.json({ error: 'Kamu sudah meminjam buku ini' }, { status: 400 })
 
   const loan = await prisma.loan.create({
-    data: { userId: session.user.id, bookId },
+    data: { userId: user.id, bookId },
     include: { book: true, user: { select: { name: true } } },
   })
 
   await createNotificationsForAdmins(
-    `Permintaan pinjam baru: "${book.title}" oleh ${session.user.name}`
+    `Permintaan pinjam baru: "${book.title}" oleh ${user.name}`
   )
 
   return Response.json({ loan }, { status: 201 })

@@ -1,5 +1,4 @@
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { getServerUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { formatDate, formatRupiah } from '@/lib/utils'
 
@@ -11,10 +10,10 @@ const STATUS = {
 }
 
 export default async function UserLoansPage() {
-  const session = await getServerSession(authOptions)
+  const user = await getServerUser()
 
   const loans = await prisma.loan.findMany({
-    where: { userId: session!.user.id },
+    where: { userId: user!.id },
     include: { book: { include: { category: true } } },
     orderBy: { requestedAt: 'desc' },
   })

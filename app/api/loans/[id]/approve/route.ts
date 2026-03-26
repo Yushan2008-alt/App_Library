@@ -1,13 +1,12 @@
 import { prisma } from '@/lib/prisma'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { getServerUser } from '@/lib/auth'
 import { createNotification } from '@/lib/notifications'
 import { addDays, formatDate } from '@/lib/utils'
 import { NextRequest } from 'next/server'
 
 export async function PATCH(_req: NextRequest, ctx: RouteContext<'/api/loans/[id]/approve'>) {
-  const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'ADMIN') {
+  const user = await getServerUser()
+  if (!user || user.role !== 'ADMIN') {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -23,23 +22,33 @@ export async function PATCH(_req: NextRequest, ctx: RouteContext<'/api/loans/[id
     return Response.json({ error: 'Pinjaman tidak dalam status PENDING' }, { status: 400 })
   }
 
-  if (loan.book.stock <= 0) {
-    return Response.json({ error: 'Stok buku habis' }, { status: 400 })
-  }
-
   const dueDate = addDays(new Date(), 7)
 
-  const [updatedLoan] = await prisma.$transaction([
-    prisma.loan.update({
-      where: { id },
-      data: { status: 'APPROVED', approvedAt: new Date(), dueDate },
-      include: { book: true, user: { select: { id: true, name: true } } },
-    }),
-    prisma.book.update({
-      where: { id: loan.bookId },
-      data: { stock: { decrement: 1 } },
-    }),
-  ])
+  let updatedLoan
+  try {
+    ;[updatedLoan] = await prisma.$transaction(async (tx) => {
+      const book = await tx.book.findUnique({ where: { id: loan.bookId } })
+      if (!book || book.stock <= 0) {
+        throw new Error('STOCK_EMPTY')
+      }
+      return Promise.all([
+        tx.loan.update({
+          where: { id },
+          data: { status: 'APPROVED', approvedAt: new Date(), dueDate },
+          include: { book: true, user: { select: { id: true, name: true } } },
+        }),
+        tx.book.update({
+          where: { id: loan.bookId },
+          data: { stock: { decrement: 1 } },
+        }),
+      ])
+    })
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === 'STOCK_EMPTY') {
+      return Response.json({ error: 'Stok buku habis' }, { status: 400 })
+    }
+    throw err
+  }
 
   await createNotification(
     loan.user.id,

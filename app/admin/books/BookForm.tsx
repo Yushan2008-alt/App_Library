@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 
@@ -30,14 +30,55 @@ export default function BookForm({
   })
   const [cover, setCover] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(initialData?.coverImage ?? null)
+  const [coverImageUrl, setCoverImageUrl] = useState<string | null>(
+    initialData?.coverImage?.startsWith('http') ? initialData.coverImage : null
+  )
+  const [fetchingCover, setFetchingCover] = useState(false)
+  const [coverFetchMsg, setCoverFetchMsg] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const urlFetchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
     setCover(file)
+    setCoverImageUrl(null)
     setPreview(URL.createObjectURL(file))
+    setCoverFetchMsg('')
+  }
+
+  async function fetchOgImage(url: string) {
+    if (!url || !url.startsWith('http')) return
+    setFetchingCover(true)
+    setCoverFetchMsg('Mengambil cover dari link...')
+    try {
+      const res = await fetch(`/api/og-image?url=${encodeURIComponent(url)}`)
+      const data = await res.json()
+      if (data.image) {
+        setPreview(data.image)
+        setCoverImageUrl(data.image)
+        setCover(null)
+        setCoverFetchMsg('Cover berhasil diambil dari link!')
+      } else {
+        setCoverFetchMsg('Cover tidak ditemukan di link tersebut.')
+      }
+    } catch {
+      setCoverFetchMsg('Gagal mengambil cover.')
+    } finally {
+      setFetchingCover(false)
+    }
+  }
+
+  function handleUrlChange(value: string) {
+    setForm({ ...form, externalUrl: value })
+    // Debounce auto-fetch
+    if (urlFetchTimeout.current) clearTimeout(urlFetchTimeout.current)
+    if (value.startsWith('http')) {
+      urlFetchTimeout.current = setTimeout(() => {
+        if (!cover) fetchOgImage(value)
+      }, 1200)
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -47,7 +88,13 @@ export default function BookForm({
 
     const fd = new FormData()
     Object.entries(form).forEach(([k, v]) => fd.append(k, v))
-    if (cover) fd.append('cover', cover)
+    if (cover) {
+      fd.append('cover', cover)
+    } else if (coverImageUrl) {
+      fd.append('coverImageUrl', coverImageUrl)
+    } else {
+      fd.append('coverImageUrl', '')
+    }
 
     const url = bookId ? `/api/books/${bookId}` : '/api/books'
     const method = bookId ? 'PUT' : 'POST'
@@ -75,45 +122,95 @@ export default function BookForm({
         </div>
       )}
 
-      {/* Cover Upload */}
+      {/* Cover Preview */}
       <div>
         <label className="block text-sm font-medium mb-2" style={{ color: '#8899BB' }}>Cover Buku</label>
-        <div className="flex items-center gap-4">
-          <div className="w-20 h-28 rounded-xl overflow-hidden flex items-center justify-center" style={{ background: 'rgba(14,34,72,0.8)' }}>
+        <div className="flex items-start gap-4">
+          <div className="w-20 h-28 rounded-xl overflow-hidden flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(14,34,72,0.8)' }}>
             {preview ? (
-              <Image src={preview} alt="preview" width={80} height={112} className="object-cover w-full h-full" />
+              <Image src={preview} alt="preview" width={80} height={112} className="object-cover w-full h-full" unoptimized />
             ) : (
               <span className="text-3xl">📚</span>
             )}
           </div>
-          <label className="cursor-pointer px-4 py-2 rounded-xl text-sm font-medium transition-colors" style={{ background: 'rgba(79,156,249,0.1)', color: '#4F9CF9', border: '1px dashed rgba(79,156,249,0.3)' }}>
-            Upload Gambar
-            <input type="file" accept="image/*" onChange={handleFile} className="hidden" />
-          </label>
+          <div className="flex flex-col gap-2">
+            <label className="cursor-pointer px-4 py-2 rounded-xl text-sm font-medium transition-colors" style={{ background: 'rgba(79,156,249,0.1)', color: '#4F9CF9', border: '1px dashed rgba(79,156,249,0.3)' }}>
+              Upload Manual
+              <input type="file" accept="image/*" onChange={handleFile} className="hidden" />
+            </label>
+            {form.externalUrl && (
+              <button
+                type="button"
+                onClick={() => fetchOgImage(form.externalUrl)}
+                disabled={fetchingCover}
+                className="px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+                style={{ background: 'rgba(16,185,129,0.1)', color: '#34D399', border: '1px dashed rgba(16,185,129,0.3)', cursor: fetchingCover ? 'not-allowed' : 'pointer' }}
+              >
+                {fetchingCover ? '⏳ Mengambil...' : '🔗 Ambil dari Link'}
+              </button>
+            )}
+            {coverFetchMsg && (
+              <p className="text-xs" style={{ color: coverFetchMsg.includes('berhasil') ? '#34D399' : '#8899BB' }}>
+                {coverFetchMsg}
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
-      {[
-        { key: 'title', label: 'Judul Buku', type: 'text', placeholder: 'Masukkan judul buku', required: true },
-        { key: 'author', label: 'Pengarang', type: 'text', placeholder: 'Nama pengarang', required: true },
-        { key: 'externalUrl', label: 'Link Akses Buku (URL)', type: 'url', placeholder: 'https://...', required: false },
-      ].map(({ key, label, type, placeholder, required }) => (
-        <div key={key}>
-          <label className="block text-sm font-medium mb-1.5" style={{ color: '#8899BB' }}>{label}</label>
-          <input
-            type={type}
-            value={form[key as keyof typeof form]}
-            onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-            required={required}
-            placeholder={placeholder}
-            className="w-full px-4 py-3 rounded-xl text-sm outline-none"
-            style={inputStyle}
-            onFocus={(e) => e.target.style.borderColor = '#4F9CF9'}
-            onBlur={(e) => e.target.style.borderColor = '#1E2E45'}
-          />
-        </div>
-      ))}
+      {/* Title */}
+      <div>
+        <label className="block text-sm font-medium mb-1.5" style={{ color: '#8899BB' }}>Judul Buku</label>
+        <input
+          type="text"
+          value={form.title}
+          onChange={(e) => setForm({ ...form, title: e.target.value })}
+          required
+          placeholder="Masukkan judul buku"
+          className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+          style={inputStyle}
+          onFocus={(e) => e.target.style.borderColor = '#4F9CF9'}
+          onBlur={(e) => e.target.style.borderColor = '#1E2E45'}
+        />
+      </div>
 
+      {/* Author */}
+      <div>
+        <label className="block text-sm font-medium mb-1.5" style={{ color: '#8899BB' }}>Pengarang</label>
+        <input
+          type="text"
+          value={form.author}
+          onChange={(e) => setForm({ ...form, author: e.target.value })}
+          required
+          placeholder="Nama pengarang"
+          className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+          style={inputStyle}
+          onFocus={(e) => e.target.style.borderColor = '#4F9CF9'}
+          onBlur={(e) => e.target.style.borderColor = '#1E2E45'}
+        />
+      </div>
+
+      {/* External URL with auto OG fetch */}
+      <div>
+        <label className="block text-sm font-medium mb-1.5" style={{ color: '#8899BB' }}>
+          Link Akses Buku (URL)
+          <span className="ml-2 text-xs font-normal" style={{ color: '#34D399' }}>
+            Cover akan otomatis diambil dari link ini
+          </span>
+        </label>
+        <input
+          type="url"
+          value={form.externalUrl}
+          onChange={(e) => handleUrlChange(e.target.value)}
+          placeholder="https://..."
+          className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+          style={inputStyle}
+          onFocus={(e) => e.target.style.borderColor = '#4F9CF9'}
+          onBlur={(e) => e.target.style.borderColor = '#1E2E45'}
+        />
+      </div>
+
+      {/* Description */}
       <div>
         <label className="block text-sm font-medium mb-1.5" style={{ color: '#8899BB' }}>Deskripsi</label>
         <textarea

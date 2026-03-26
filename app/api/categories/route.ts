@@ -1,6 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { getServerUser } from '@/lib/auth'
 import { NextRequest } from 'next/server'
 
 export async function GET() {
@@ -12,8 +11,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'ADMIN') {
+  const user = await getServerUser()
+  if (!user || user.role !== 'ADMIN') {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -21,6 +20,7 @@ export async function POST(request: NextRequest) {
   if (!name) return Response.json({ error: 'Nama kategori wajib diisi' }, { status: 400 })
 
   const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+  if (!slug) return Response.json({ error: 'Nama kategori tidak valid' }, { status: 400 })
 
   const existing = await prisma.category.findUnique({ where: { slug } })
   if (existing) return Response.json({ error: 'Kategori sudah ada' }, { status: 400 })

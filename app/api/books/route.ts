@@ -1,6 +1,5 @@
 import { prisma } from '@/lib/prisma'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { getServerUser } from '@/lib/auth'
 import { NextRequest } from 'next/server'
 import { writeFile } from 'fs/promises'
 import path from 'path'
@@ -41,8 +40,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'ADMIN') {
+  const user = await getServerUser()
+  if (!user || user.role !== 'ADMIN') {
     return Response.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -55,12 +54,16 @@ export async function POST(request: NextRequest) {
     const stock = Number(formData.get('stock') ?? 1)
     const categoryId = formData.get('categoryId') as string
     const coverFile = formData.get('cover') as File | null
+    const coverImageUrl = formData.get('coverImageUrl') as string | null
 
     if (!title || !author || !description || !categoryId) {
       return Response.json({ error: 'Field wajib tidak lengkap' }, { status: 400 })
     }
+    if (isNaN(stock) || stock < 0) {
+      return Response.json({ error: 'Stok tidak valid' }, { status: 400 })
+    }
 
-    let coverImage: string | null = null
+    let coverImage: string | null = coverImageUrl || null
     if (coverFile && coverFile.size > 0) {
       const bytes = await coverFile.arrayBuffer()
       const buffer = Buffer.from(bytes)

@@ -1,5 +1,4 @@
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { getServerUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { formatDate } from '@/lib/utils'
 import Link from 'next/link'
@@ -12,15 +11,15 @@ const STATUS = {
 }
 
 export default async function UserDashboard() {
-  const session = await getServerSession(authOptions)!
+  const user = await getServerUser()
   const [loans, notifications] = await Promise.all([
     prisma.loan.findMany({
-      where: { userId: session!.user.id, status: { in: ['PENDING', 'APPROVED'] } },
+      where: { userId: user!.id, status: { in: ['PENDING', 'APPROVED'] } },
       include: { book: { select: { title: true, author: true } } },
       orderBy: { requestedAt: 'desc' },
     }),
     prisma.notification.findMany({
-      where: { userId: session!.user.id, isRead: false },
+      where: { userId: user!.id, isRead: false },
       orderBy: { createdAt: 'desc' },
       take: 5,
     }),
@@ -29,7 +28,7 @@ export default async function UserDashboard() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold" style={{ color: '#F0F4FF' }}>Halo, {session?.user.name} 👋</h1>
+        <h1 className="text-2xl font-bold" style={{ color: '#F0F4FF' }}>Halo, {user?.name} 👋</h1>
         <p className="text-sm mt-1" style={{ color: '#8899BB' }}>Selamat datang di perpustakaan digital</p>
       </div>
 
