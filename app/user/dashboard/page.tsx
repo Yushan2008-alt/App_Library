@@ -2,6 +2,7 @@ import { getServerUser } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { formatDate } from '@/lib/utils'
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 
 const STATUS = {
   PENDING:  { bg: 'rgba(245,158,11,0.15)',  text: '#fbbf24', label: 'Menunggu' },
@@ -12,18 +13,27 @@ const STATUS = {
 
 export default async function UserDashboard() {
   const user = await getServerUser()
-  const [loans, notifications] = await Promise.all([
-    prisma.loan.findMany({
-      where: { userId: user!.id, status: { in: ['PENDING', 'APPROVED'] } },
-      include: { book: { select: { title: true, author: true } } },
-      orderBy: { requestedAt: 'desc' },
-    }),
-    prisma.notification.findMany({
-      where: { userId: user!.id, isRead: false },
-      orderBy: { createdAt: 'desc' },
-      take: 5,
-    }),
-  ])
+  if (!user) redirect('/login')
+
+  let loans: Awaited<ReturnType<typeof prisma.loan.findMany>> = []
+  let notifications: Awaited<ReturnType<typeof prisma.notification.findMany>> = []
+
+  try {
+    ;[loans, notifications] = await Promise.all([
+      prisma.loan.findMany({
+        where: { userId: user.id, status: { in: ['PENDING', 'APPROVED'] } },
+        include: { book: { select: { title: true, author: true } } },
+        orderBy: { requestedAt: 'desc' },
+      }),
+      prisma.notification.findMany({
+        where: { userId: user.id, isRead: false },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+      }),
+    ])
+  } catch (e) {
+    console.error('[dashboard] DB error:', e)
+  }
 
   return (
     <div>
