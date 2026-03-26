@@ -5,7 +5,7 @@ import { PrismaClient } from '@/app/generated/prisma/client'
 function createPrismaClient() {
   const pool = new Pool({
     // Fallback prevents Pool() from crashing at module init when DATABASE_URL is missing
-    connectionString: process.env.DIRECT_URL ?? process.env.DATABASE_URL ?? 'postgresql://localhost/invalid',
+    connectionString: process.env.DATABASE_URL ?? 'postgresql://localhost/invalid',
     ssl: { rejectUnauthorized: false },
     max: 1,
     idleTimeoutMillis: 10000,
