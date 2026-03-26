@@ -9,37 +9,49 @@ export async function GET(request: NextRequest) {
   const next = searchParams.get('next') ?? '/'
 
   if (code) {
-    const supabase = await createClient()
-    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+    try {
+      const supabase = await createClient()
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code)
 
-    if (!error && data.user) {
-      const authUser = data.user
-
-      // Determine role — existing metadata takes priority, otherwise default USER
-      const role: 'ADMIN' | 'USER' = authUser.user_metadata?.role === 'ADMIN' ? 'ADMIN' : 'USER'
-
-      // Ensure role is set in user_metadata (important for OAuth users who don't have it)
-      if (!authUser.user_metadata?.role) {
-        await supabase.auth.updateUser({ data: { role } })
+      if (error) {
+        console.error('[auth/callback] exchangeCodeForSession error:', error)
+        return NextResponse.redirect(new URL(`/login?error=auth_failed&detail=${encodeURIComponent(error.message)}`, origin))
       }
 
-      // Create or sync User profile in DB
-      await prisma.user.upsert({
-        where: { id: authUser.id },
-        update: {},
-        create: {
-          id: authUser.id,
-          name: authUser.user_metadata?.name
-            ?? authUser.user_metadata?.full_name
-            ?? authUser.email?.split('@')[0]
-            ?? 'User',
-          email: authUser.email!,
-          role,
-        },
-      })
+      if (data.user) {
+        const authUser = data.user
 
-      const redirectTo = role === 'ADMIN' ? '/admin/dashboard' : '/user/dashboard'
-      return NextResponse.redirect(new URL(next === '/' ? redirectTo : next, origin))
+        const role: 'ADMIN' | 'USER' = authUser.user_metadata?.role === 'ADMIN' ? 'ADMIN' : 'USER'
+
+        if (!authUser.user_metadata?.role) {
+          await supabase.auth.updateUser({ data: { role } })
+        }
+
+        try {
+          await prisma.user.upsert({
+            where: { id: authUser.id },
+            update: {},
+            create: {
+              id: authUser.id,
+              name: authUser.user_metadata?.name
+                ?? authUser.user_metadata?.full_name
+                ?? authUser.email?.split('@')[0]
+                ?? 'User',
+              email: authUser.email!,
+              role,
+            },
+          })
+        } catch (dbError) {
+          console.error('[auth/callback] prisma.user.upsert error:', dbError)
+          return NextResponse.redirect(new URL(`/login?error=db_error&detail=${encodeURIComponent(String(dbError))}`, origin))
+        }
+
+        const redirectTo = role === 'ADMIN' ? '/admin/dashboard' : '/user/dashboard'
+        return NextResponse.redirect(new URL(next === '/' ? redirectTo : next, origin))
+      }
+    } catch (err) {
+      console.error('[auth/callback] unexpected error:', err)
+      return NextResponse.redirect(new URL(`/login?error=unexpected&detail=${encodeURIComponent(String(err))}`, origin))
     }
   }
 
