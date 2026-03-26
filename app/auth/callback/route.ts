@@ -42,8 +42,8 @@ export async function GET(request: NextRequest) {
             },
           })
         } catch (dbError) {
-          console.error('[auth/callback] prisma.user.upsert error:', dbError)
-          return NextResponse.redirect(new URL(`/login?error=db_error&detail=${encodeURIComponent(String(dbError))}`, origin))
+          // DB failure should not block login — getServerUser() has a fallback
+          console.error('[auth/callback] prisma.user.upsert error (non-fatal):', dbError)
         }
 
         const redirectTo = role === 'ADMIN' ? '/admin/dashboard' : '/user/dashboard'

@@ -6,6 +6,15 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ---
 
+## GitHub Push
+
+**Selalu push ke `Yushan2008-alt/App_Library`** setelah setiap perubahan kode.
+- Remote `origin` → `https://github.com/Yushan2008-alt/App_Library.git` (terhubung ke Vercel auto-deploy)
+- Perintah: `git push origin master`
+- PAT disimpan di Windows credential manager untuk akun `Yushan2008-alt`
+
+---
+
 # App-Library — Catatan Sistem untuk AI Agent
 
 ## Stack Teknis

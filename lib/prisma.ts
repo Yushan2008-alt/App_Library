@@ -8,7 +8,7 @@ function createPrismaClient() {
     ssl: { rejectUnauthorized: false },
     max: 1,
     idleTimeoutMillis: 10000,
-    connectionTimeoutMillis: 5000,
+    connectionTimeoutMillis: 3000,
   })
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const adapter = new PrismaPg(pool as any)
