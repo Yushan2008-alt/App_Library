@@ -9,14 +9,21 @@ const STATUS = {
   RETURNED: { bg: 'rgba(79,156,249,0.15)',  text: '#93c5fd', label: 'Dikembalikan' },
 }
 
+export const dynamic = 'force-dynamic'
+
 export default async function UserLoansPage() {
   const user = await getServerUser()
 
-  const loans = await prisma.loan.findMany({
-    where: { userId: user!.id },
-    include: { book: { include: { category: true } } },
-    orderBy: { requestedAt: 'desc' },
-  })
+  let loans: Awaited<ReturnType<typeof prisma.loan.findMany<{ include: { book: { include: { category: true } } } }>>> = []
+  try {
+    loans = await prisma.loan.findMany({
+      where: { userId: user!.id },
+      include: { book: { include: { category: true } } },
+      orderBy: { requestedAt: 'desc' },
+    })
+  } catch (e) {
+    console.error('[user/loans] DB error:', e)
+  }
 
   return (
     <div>

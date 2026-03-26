@@ -4,23 +4,34 @@ import { formatRupiah, formatDate } from '@/lib/utils'
 import Link from 'next/link'
 import QuickActions from './QuickActions'
 
+export const dynamic = 'force-dynamic'
+
 export default async function AdminDashboard() {
   const user = await getServerUser()
 
-  const [totalBooks, totalUsers, activeLoans, pendingRequests, overdueLoans, fineAggregate, recentLoans] =
-    await Promise.all([
-      prisma.book.count(),
-      prisma.user.count({ where: { role: 'USER' } }),
-      prisma.loan.count({ where: { status: 'APPROVED' } }),
-      prisma.loan.count({ where: { status: 'PENDING' } }),
-      prisma.loan.count({ where: { status: 'APPROVED', dueDate: { lt: new Date() } } }),
-      prisma.loan.aggregate({ where: { status: 'RETURNED' }, _sum: { fine: true } }),
-      prisma.loan.findMany({
-        take: 5,
-        orderBy: { requestedAt: 'desc' },
-        include: { user: { select: { name: true } }, book: { select: { title: true } } },
-      }),
-    ])
+  let totalBooks = 0, totalUsers = 0, activeLoans = 0, pendingRequests = 0, overdueLoans = 0
+  let fineAggregate: { _sum: { fine: number | null } } = { _sum: { fine: null } }
+  type RecentLoan = { id: string; status: string; requestedAt: Date; user: { name: string }; book: { title: string } }
+  let recentLoans: RecentLoan[] = []
+
+  try {
+    ;[totalBooks, totalUsers, activeLoans, pendingRequests, overdueLoans, fineAggregate, recentLoans] =
+      await Promise.all([
+        prisma.book.count(),
+        prisma.user.count({ where: { role: 'USER' } }),
+        prisma.loan.count({ where: { status: 'APPROVED' } }),
+        prisma.loan.count({ where: { status: 'PENDING' } }),
+        prisma.loan.count({ where: { status: 'APPROVED', dueDate: { lt: new Date() } } }),
+        prisma.loan.aggregate({ where: { status: 'RETURNED' }, _sum: { fine: true } }),
+        prisma.loan.findMany({
+          take: 5,
+          orderBy: { requestedAt: 'desc' },
+          include: { user: { select: { name: true } }, book: { select: { title: true } } },
+        }),
+      ])
+  } catch (e) {
+    console.error('[admin/dashboard] DB error:', e)
+  }
 
   const stats = [
     { label: 'Total Buku', value: totalBooks, icon: '📚', color: '#4F9CF9', bg: 'rgba(79,156,249,0.12)' },

@@ -2,14 +2,19 @@ import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import AdminBooksClient from './AdminBooksClient'
 
+export const dynamic = 'force-dynamic'
+
 export default async function AdminBooksPage() {
-  const [books, categories] = await Promise.all([
-    prisma.book.findMany({
-      include: { category: true },
-      orderBy: { createdAt: 'desc' },
-    }),
-    prisma.category.findMany({ orderBy: { name: 'asc' } }),
-  ])
+  let books: Awaited<ReturnType<typeof prisma.book.findMany<{ include: { category: true } }>>> = []
+  let categories: Awaited<ReturnType<typeof prisma.category.findMany>> = []
+  try {
+    ;[books, categories] = await Promise.all([
+      prisma.book.findMany({ include: { category: true }, orderBy: { createdAt: 'desc' } }),
+      prisma.category.findMany({ orderBy: { name: 'asc' } }),
+    ])
+  } catch (e) {
+    console.error('[admin/books] DB error:', e)
+  }
 
   return (
     <div className="p-8">

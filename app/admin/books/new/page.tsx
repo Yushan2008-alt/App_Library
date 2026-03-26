@@ -1,8 +1,15 @@
 import { prisma } from '@/lib/prisma'
 import BookForm from '../BookForm'
 
+export const dynamic = 'force-dynamic'
+
 export default async function NewBookPage() {
-  const categories = await prisma.category.findMany({ orderBy: { name: 'asc' } })
+  let categories: Awaited<ReturnType<typeof prisma.category.findMany>> = []
+  try {
+    categories = await prisma.category.findMany({ orderBy: { name: 'asc' } })
+  } catch (e) {
+    console.error('[admin/books/new] DB error:', e)
+  }
 
   return (
     <div className="p-8 max-w-2xl">

@@ -2,14 +2,19 @@ import { prisma } from '@/lib/prisma'
 import { formatDate } from '@/lib/utils'
 import Link from 'next/link'
 
+export const dynamic = 'force-dynamic'
+
 export default async function AdminUsersPage() {
-  const users = await prisma.user.findMany({
-    where: { role: 'USER' },
-    include: {
-      _count: { select: { loans: true } },
-    },
-    orderBy: { createdAt: 'desc' },
-  })
+  let users: Awaited<ReturnType<typeof prisma.user.findMany<{ include: { _count: { select: { loans: true } } } }>>> = []
+  try {
+    users = await prisma.user.findMany({
+      where: { role: 'USER' },
+      include: { _count: { select: { loans: true } } },
+      orderBy: { createdAt: 'desc' },
+    })
+  } catch (e) {
+    console.error('[admin/users] DB error:', e)
+  }
 
   return (
     <div className="p-8">

@@ -12,15 +12,20 @@ const STATUS = {
 
 export default async function UserDetailPage(props: PageProps<'/admin/users/[id]'>) {
   const { id } = await props.params
-  const user = await prisma.user.findUnique({
-    where: { id },
-    include: {
-      loans: {
-        include: { book: { select: { title: true, author: true } } },
-        orderBy: { requestedAt: 'desc' },
+  let user = null
+  try {
+    user = await prisma.user.findUnique({
+      where: { id },
+      include: {
+        loans: {
+          include: { book: { select: { title: true, author: true } } },
+          orderBy: { requestedAt: 'desc' },
+        },
       },
-    },
-  })
+    })
+  } catch (e) {
+    console.error('[admin/users/id] DB error:', e)
+  }
 
   if (!user || user.role !== 'USER') notFound()
 

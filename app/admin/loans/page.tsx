@@ -1,14 +1,21 @@
 import { prisma } from '@/lib/prisma'
 import AdminLoansClient from './AdminLoansClient'
 
+export const dynamic = 'force-dynamic'
+
 export default async function AdminLoansPage() {
-  const loans = await prisma.loan.findMany({
-    include: {
-      user: { select: { id: true, name: true, email: true } },
-      book: { include: { category: true } },
-    },
-    orderBy: { requestedAt: 'desc' },
-  })
+  let loans: Awaited<ReturnType<typeof prisma.loan.findMany<{ include: { user: { select: { id: true; name: true; email: true } }; book: { include: { category: true } } } }>>> = []
+  try {
+    loans = await prisma.loan.findMany({
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        book: { include: { category: true } },
+      },
+      orderBy: { requestedAt: 'desc' },
+    })
+  } catch (e) {
+    console.error('[admin/loans] DB error:', e)
+  }
 
   return (
     <div className="p-8">

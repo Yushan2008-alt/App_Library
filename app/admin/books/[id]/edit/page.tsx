@@ -4,10 +4,16 @@ import BookForm from '../../BookForm'
 
 export default async function EditBookPage(props: PageProps<'/admin/books/[id]/edit'>) {
   const { id } = await props.params
-  const [book, categories] = await Promise.all([
-    prisma.book.findUnique({ where: { id } }),
-    prisma.category.findMany({ orderBy: { name: 'asc' } }),
-  ])
+  let book: Awaited<ReturnType<typeof prisma.book.findUnique>> = null
+  let categories: Awaited<ReturnType<typeof prisma.category.findMany>> = []
+  try {
+    ;[book, categories] = await Promise.all([
+      prisma.book.findUnique({ where: { id } }),
+      prisma.category.findMany({ orderBy: { name: 'asc' } }),
+    ])
+  } catch (e) {
+    console.error('[admin/books/edit] DB error:', e)
+  }
 
   if (!book) notFound()
 
