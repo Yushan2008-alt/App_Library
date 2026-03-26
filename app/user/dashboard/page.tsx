@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/prisma'
+import type { Prisma } from '@/app/generated/prisma/client'
 import { formatDate } from '@/lib/utils'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
@@ -19,7 +20,7 @@ export default async function UserDashboard() {
   const userId = authUser.id
   const displayName = authUser.user_metadata?.full_name ?? authUser.user_metadata?.name ?? authUser.email?.split('@')[0] ?? 'User'
 
-  let loans: Awaited<ReturnType<typeof prisma.loan.findMany>> = []
+  let loans: Array<Prisma.LoanGetPayload<{ include: { book: { select: { title: true; author: true } } } }>> = []
   let notifications: Awaited<ReturnType<typeof prisma.notification.findMany>> = []
 
   try {
