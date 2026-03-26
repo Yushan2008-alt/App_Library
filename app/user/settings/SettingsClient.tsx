@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/client'
 import { useState, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 
 interface Props {
@@ -42,6 +43,8 @@ function SaveButton({ loading, label, loadingLabel, color = '#4F9CF9' }: { loadi
 }
 
 export default function SettingsClient({ user }: Props) {
+  const router = useRouter()
+
   // Avatar state
   const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl ?? null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
@@ -86,6 +89,7 @@ export default function SettingsClient({ user }: Props) {
       if (!res.ok) { setProfileError(data.error ?? 'Gagal menyimpan.'); return }
       setProfileSuccess(true)
       setSavedDisplayName(data.username || data.name || [firstName, lastName].filter(Boolean).join(' '))
+      router.refresh()
     } catch {
       setProfileError('Terjadi kesalahan. Coba lagi.')
     } finally {

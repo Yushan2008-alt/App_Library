@@ -155,8 +155,8 @@ export default function UserNavbar({ user }: UserNavbarProps) {
                         boxShadow: '0 0 0 2px rgba(79,156,249,0.2)',
                       }}
                     >
-                      {user.avatarUrl ? (
-                        <Image src={user.avatarUrl} alt={displayName} width={40} height={40} style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} unoptimized />
+                      {avatarUrl ? (
+                        <Image src={avatarUrl} alt={displayName} width={40} height={40} style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} unoptimized />
                       ) : displayName.charAt(0).toUpperCase()}
                     </div>
                     <div className="min-w-0">
