@@ -4,7 +4,7 @@ import { PrismaClient } from '@/app/generated/prisma/client'
 
 function createPrismaClient() {
   const pool = new Pool({
-    connectionString: process.env.DIRECT_URL ?? process.env.DATABASE_URL,
+    connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false },
   })
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
