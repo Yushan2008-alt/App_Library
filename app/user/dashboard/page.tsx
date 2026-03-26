@@ -1,4 +1,4 @@
-import { getServerUser } from '@/lib/auth'
+import { createClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/prisma'
 import { formatDate } from '@/lib/utils'
 import Link from 'next/link'
@@ -12,8 +12,12 @@ const STATUS = {
 }
 
 export default async function UserDashboard() {
-  const user = await getServerUser()
-  if (!user) redirect('/login')
+  // Use Supabase directly (fast cookie read, no DB) — layout already ran getServerUser()
+  const supabase = await createClient()
+  const { data: { user: authUser } } = await supabase.auth.getUser()
+  if (!authUser) redirect('/login')
+  const userId = authUser.id
+  const displayName = authUser.user_metadata?.full_name ?? authUser.user_metadata?.name ?? authUser.email?.split('@')[0] ?? 'User'
 
   let loans: Awaited<ReturnType<typeof prisma.loan.findMany>> = []
   let notifications: Awaited<ReturnType<typeof prisma.notification.findMany>> = []
@@ -21,12 +25,12 @@ export default async function UserDashboard() {
   try {
     ;[loans, notifications] = await Promise.all([
       prisma.loan.findMany({
-        where: { userId: user.id, status: { in: ['PENDING', 'APPROVED'] } },
+        where: { userId, status: { in: ['PENDING', 'APPROVED'] } },
         include: { book: { select: { title: true, author: true } } },
         orderBy: { requestedAt: 'desc' },
       }),
       prisma.notification.findMany({
-        where: { userId: user.id, isRead: false },
+        where: { userId, isRead: false },
         orderBy: { createdAt: 'desc' },
         take: 5,
       }),
@@ -38,7 +42,7 @@ export default async function UserDashboard() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold" style={{ color: '#F0F4FF' }}>Halo, {user?.name} 👋</h1>
+        <h1 className="text-2xl font-bold" style={{ color: '#F0F4FF' }}>Halo, {displayName} 👋</h1>
         <p className="text-sm mt-1" style={{ color: '#8899BB' }}>Selamat datang di perpustakaan digital</p>
       </div>
 
