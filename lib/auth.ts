@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { prisma } from '@/lib/prisma'
+import { createServiceClient } from '@/lib/supabase/service'
 
 export async function getServerUser() {
   try {
@@ -19,7 +19,8 @@ export async function getServerUser() {
     }
 
     try {
-      const dbUser = await prisma.user.findUnique({ where: { id: user.id } })
+      const service = createServiceClient()
+      const { data: dbUser } = await service.from('User').select('*').eq('id', user.id).single()
       return dbUser ?? fallback
     } catch {
       return fallback

@@ -1,15 +1,15 @@
-import { prisma } from '@/lib/prisma'
+import { createServiceClient } from '@/lib/supabase/service'
 
 export async function createNotification(userId: string, message: string) {
-  return prisma.notification.create({
-    data: { userId, message },
-  })
+  const supabase = createServiceClient()
+  await supabase.from('Notification').insert({ userId, message })
 }
 
 export async function createNotificationsForAdmins(message: string) {
-  const admins = await prisma.user.findMany({ where: { role: 'ADMIN' } })
-  if (admins.length === 0) return
-  await prisma.notification.createMany({
-    data: admins.map((admin) => ({ userId: admin.id, message })),
-  })
+  const supabase = createServiceClient()
+  const { data: admins } = await supabase.from('User').select('id').eq('role', 'ADMIN')
+  if (!admins || admins.length === 0) return
+  await supabase.from('Notification').insert(
+    admins.map((a: { id: string }) => ({ userId: a.id, message }))
+  )
 }

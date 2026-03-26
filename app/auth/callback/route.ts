@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { prisma } from '@/lib/prisma'
+import { createServiceClient } from '@/lib/supabase/service'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(request: NextRequest) {
@@ -28,10 +28,15 @@ export async function GET(request: NextRequest) {
         }
 
         try {
-          await prisma.user.upsert({
-            where: { id: authUser.id },
-            update: {},
-            create: {
+          const service = createServiceClient()
+          const { data: existingUser } = await service
+            .from('User')
+            .select('id')
+            .eq('id', authUser.id)
+            .maybeSingle()
+
+          if (!existingUser) {
+            await service.from('User').insert({
               id: authUser.id,
               name: authUser.user_metadata?.name
                 ?? authUser.user_metadata?.full_name
@@ -39,11 +44,11 @@ export async function GET(request: NextRequest) {
                 ?? 'User',
               email: authUser.email!,
               role,
-            },
-          })
+            })
+          }
         } catch (dbError) {
           // DB failure should not block login — getServerUser() has a fallback
-          console.error('[auth/callback] prisma.user.upsert error (non-fatal):', dbError)
+          console.error('[auth/callback] user upsert error (non-fatal):', dbError)
         }
 
         const redirectTo = role === 'ADMIN' ? '/admin/dashboard' : '/user/dashboard'

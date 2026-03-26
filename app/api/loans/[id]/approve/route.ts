@@ -1,5 +1,5 @@
-import { prisma } from '@/lib/prisma'
 import { getServerUser } from '@/lib/auth'
+import { createClient } from '@/lib/supabase/server'
 import { createNotification } from '@/lib/notifications'
 import { addDays, formatDate } from '@/lib/utils'
 import { NextRequest } from 'next/server'
@@ -11,49 +11,51 @@ export async function PATCH(_req: NextRequest, ctx: RouteContext<'/api/loans/[id
   }
 
   const { id } = await ctx.params
+  const supabase = await createClient()
 
-  const loan = await prisma.loan.findUnique({
-    where: { id },
-    include: { book: true, user: { select: { id: true, name: true } } },
-  })
+  const { data: loan } = await supabase
+    .from('Loan')
+    .select('id, status, bookId, userId, book:Book!Loan_bookId_fkey(id, title, stock), user:User!Loan_userId_fkey(id, name)')
+    .eq('id', id)
+    .single()
 
   if (!loan) return Response.json({ error: 'Pinjaman tidak ditemukan' }, { status: 404 })
   if (loan.status !== 'PENDING') {
     return Response.json({ error: 'Pinjaman tidak dalam status PENDING' }, { status: 400 })
   }
 
-  const dueDate = addDays(new Date(), 7)
-
-  let updatedLoan
-  try {
-    ;[updatedLoan] = await prisma.$transaction(async (tx) => {
-      const book = await tx.book.findUnique({ where: { id: loan.bookId } })
-      if (!book || book.stock <= 0) {
-        throw new Error('STOCK_EMPTY')
-      }
-      return Promise.all([
-        tx.loan.update({
-          where: { id },
-          data: { status: 'APPROVED', approvedAt: new Date(), dueDate },
-          include: { book: true, user: { select: { id: true, name: true } } },
-        }),
-        tx.book.update({
-          where: { id: loan.bookId },
-          data: { stock: { decrement: 1 } },
-        }),
-      ])
-    })
-  } catch (err: unknown) {
-    if (err instanceof Error && err.message === 'STOCK_EMPTY') {
-      return Response.json({ error: 'Stok buku habis' }, { status: 400 })
-    }
-    throw err
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const book = loan.book as any
+  if (!book || book.stock <= 0) {
+    return Response.json({ error: 'Stok buku habis' }, { status: 400 })
   }
 
+  const dueDate = addDays(new Date(), 7)
+
+  const { error: loanErr } = await supabase
+    .from('Loan')
+    .update({ status: 'APPROVED', approvedAt: new Date().toISOString(), dueDate: dueDate.toISOString() })
+    .eq('id', id)
+
+  if (loanErr) {
+    console.error('[approve] loan update error:', loanErr)
+    return Response.json({ error: 'Gagal menyetujui pinjaman' }, { status: 500 })
+  }
+
+  await supabase.from('Book').update({ stock: book.stock - 1 }).eq('id', loan.bookId)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const loanUser = loan.user as any
   await createNotification(
-    loan.user.id,
-    `Pinjaman "${loan.book.title}" disetujui. Jatuh tempo: ${formatDate(dueDate)}`
+    loanUser.id,
+    `Pinjaman "${book.title}" disetujui. Jatuh tempo: ${formatDate(dueDate)}`
   )
+
+  const { data: updatedLoan } = await supabase
+    .from('Loan')
+    .select('id, status, approvedAt, dueDate, book:Book!Loan_bookId_fkey(id, title), user:User!Loan_userId_fkey(id, name)')
+    .eq('id', id)
+    .single()
 
   return Response.json({ loan: updatedLoan })
 }

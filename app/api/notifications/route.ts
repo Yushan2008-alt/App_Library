@@ -1,5 +1,5 @@
-import { prisma } from '@/lib/prisma'
 import { getServerUser } from '@/lib/auth'
+import { createClient } from '@/lib/supabase/server'
 import { NextRequest } from 'next/server'
 
 export async function GET(request: NextRequest) {
@@ -9,18 +9,24 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const unreadOnly = searchParams.get('unread') === 'true'
 
-  const notifications = await prisma.notification.findMany({
-    where: {
-      userId: user.id,
-      ...(unreadOnly ? { isRead: false } : {}),
-    },
-    orderBy: { createdAt: 'desc' },
-    take: 20,
-  })
+  const supabase = await createClient()
 
-  const unreadCount = await prisma.notification.count({
-    where: { userId: user.id, isRead: false },
-  })
+  let query = supabase
+    .from('Notification')
+    .select('id, message, isRead, createdAt')
+    .eq('userId', user.id)
+    .order('createdAt', { ascending: false })
+    .limit(20)
 
-  return Response.json({ notifications, unreadCount })
+  if (unreadOnly) query = query.eq('isRead', false)
+
+  const { data: notifications } = await query
+
+  const { count: unreadCount } = await supabase
+    .from('Notification')
+    .select('*', { count: 'exact', head: true })
+    .eq('userId', user.id)
+    .eq('isRead', false)
+
+  return Response.json({ notifications: notifications ?? [], unreadCount: unreadCount ?? 0 })
 }

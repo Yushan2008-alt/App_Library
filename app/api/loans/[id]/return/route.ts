@@ -1,5 +1,5 @@
-import { prisma } from '@/lib/prisma'
 import { getServerUser } from '@/lib/auth'
+import { createClient } from '@/lib/supabase/server'
 import { createNotification } from '@/lib/notifications'
 import { calculateFine, formatRupiah } from '@/lib/utils'
 import { NextRequest } from 'next/server'
@@ -11,11 +11,13 @@ export async function PATCH(_req: NextRequest, ctx: RouteContext<'/api/loans/[id
   }
 
   const { id } = await ctx.params
+  const supabase = await createClient()
 
-  const loan = await prisma.loan.findUnique({
-    where: { id },
-    include: { book: true, user: { select: { id: true } } },
-  })
+  const { data: loan } = await supabase
+    .from('Loan')
+    .select('id, status, bookId, dueDate, userId, book:Book!Loan_bookId_fkey(id, title, stock), user:User!Loan_userId_fkey(id)')
+    .eq('id', id)
+    .single()
 
   if (!loan) return Response.json({ error: 'Pinjaman tidak ditemukan' }, { status: 404 })
   if (loan.status !== 'APPROVED') {
@@ -23,26 +25,33 @@ export async function PATCH(_req: NextRequest, ctx: RouteContext<'/api/loans/[id
   }
 
   const returnedAt = new Date()
-  const fine = loan.dueDate ? calculateFine(loan.dueDate, returnedAt) : 0
+  const fine = loan.dueDate ? calculateFine(new Date(loan.dueDate), returnedAt) : 0
 
-  const [updatedLoan] = await prisma.$transaction([
-    prisma.loan.update({
-      where: { id },
-      data: { status: 'RETURNED', returnedAt, fine },
-      include: { book: true },
-    }),
-    prisma.book.update({
-      where: { id: loan.bookId },
-      data: { stock: { increment: 1 } },
-    }),
-  ])
+  const { error: loanErr } = await supabase
+    .from('Loan')
+    .update({ status: 'RETURNED', returnedAt: returnedAt.toISOString(), fine })
+    .eq('id', id)
+
+  if (loanErr) return Response.json({ error: 'Gagal memproses pengembalian' }, { status: 500 })
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const book = loan.book as any
+  await supabase.from('Book').update({ stock: book.stock + 1 }).eq('id', loan.bookId)
 
   if (fine > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const loanUser = loan.user as any
     await createNotification(
-      loan.user.id,
-      `Pengembalian terlambat: "${loan.book.title}". Denda: ${formatRupiah(fine)}`
+      loanUser.id,
+      `Pengembalian terlambat: "${book.title}". Denda: ${formatRupiah(fine)}`
     )
   }
+
+  const { data: updatedLoan } = await supabase
+    .from('Loan')
+    .select('id, status, returnedAt, fine, book:Book!Loan_bookId_fkey(id, title)')
+    .eq('id', id)
+    .single()
 
   return Response.json({ loan: updatedLoan, fine })
 }

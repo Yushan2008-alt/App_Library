@@ -1,7 +1,6 @@
-import { prisma } from '@/lib/prisma'
 import { getServerUser } from '@/lib/auth'
-import { NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { NextRequest } from 'next/server'
 
 /** Extract storage path from a Supabase Storage public URL */
 function extractStoragePath(url: string, bucket: string): string | null {
@@ -9,7 +8,6 @@ function extractStoragePath(url: string, bucket: string): string | null {
     const marker = `/storage/v1/object/public/${bucket}/`
     const idx = url.indexOf(marker)
     if (idx === -1) return null
-    // Strip query string (cache-buster)
     return url.slice(idx + marker.length).split('?')[0]
   } catch {
     return null
@@ -18,10 +16,12 @@ function extractStoragePath(url: string, bucket: string): string | null {
 
 export async function GET(_req: NextRequest, ctx: RouteContext<'/api/books/[id]'>) {
   const { id } = await ctx.params
-  const book = await prisma.book.findUnique({
-    where: { id },
-    include: { category: true },
-  })
+  const supabase = await createClient()
+  const { data: book } = await supabase
+    .from('Book')
+    .select('id, title, author, description, coverImage, externalUrl, stock, categoryId, category:Category!Book_categoryId_fkey(id, name, slug)')
+    .eq('id', id)
+    .single()
   if (!book) return Response.json({ error: 'Buku tidak ditemukan' }, { status: 404 })
   return Response.json({ book })
 }
@@ -49,17 +49,18 @@ export async function PUT(request: NextRequest, ctx: RouteContext<'/api/books/[i
       return Response.json({ error: 'Stok tidak valid' }, { status: 400 })
     }
 
-    const existing = await prisma.book.findUnique({ where: { id } })
+    const supabase = await createClient()
+
+    const { data: existing } = await supabase.from('Book').select('id, coverImage').eq('id', id).single()
     if (!existing) return Response.json({ error: 'Buku tidak ditemukan' }, { status: 404 })
 
     let coverImage = coverImageUrl !== null ? (coverImageUrl || null) : existing.coverImage
 
     if (coverFile && coverFile.size > 0) {
-      const supabase = await createClient()
       const ext = coverFile.name.split('.').pop()?.toLowerCase() || 'jpg'
       const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-
       const bytes = await coverFile.arrayBuffer()
+
       const { error: uploadError } = await supabase.storage
         .from('book-covers')
         .upload(filename, bytes, { contentType: coverFile.type, upsert: false })
@@ -69,24 +70,23 @@ export async function PUT(request: NextRequest, ctx: RouteContext<'/api/books/[i
         return Response.json({ error: 'Gagal mengupload cover buku.' }, { status: 500 })
       }
 
-      // Hapus cover lama dari Supabase Storage (jika ada)
       if (existing.coverImage) {
         const oldPath = extractStoragePath(existing.coverImage, 'book-covers')
-        if (oldPath) {
-          await supabase.storage.from('book-covers').remove([oldPath]).catch(() => {})
-        }
+        if (oldPath) await supabase.storage.from('book-covers').remove([oldPath]).catch(() => {})
       }
 
       const { data: urlData } = supabase.storage.from('book-covers').getPublicUrl(filename)
       coverImage = urlData.publicUrl
     }
 
-    const book = await prisma.book.update({
-      where: { id },
-      data: { title, author, description, externalUrl: externalUrl || null, stock, categoryId, coverImage },
-      include: { category: true },
-    })
+    const { data: book, error } = await supabase
+      .from('Book')
+      .update({ title, author, description, externalUrl: externalUrl || null, stock, categoryId, coverImage })
+      .eq('id', id)
+      .select('id, title, author, description, coverImage, externalUrl, stock, categoryId, category:Category!Book_categoryId_fkey(id, name, slug)')
+      .single()
 
+    if (error) return Response.json({ error: 'Terjadi kesalahan server' }, { status: 500 })
     return Response.json({ book })
   } catch {
     return Response.json({ error: 'Terjadi kesalahan server' }, { status: 500 })
@@ -100,26 +100,26 @@ export async function DELETE(_req: NextRequest, ctx: RouteContext<'/api/books/[i
   }
 
   const { id } = await ctx.params
+  const supabase = await createClient()
 
-  const existing = await prisma.book.findUnique({ where: { id } })
+  const { data: existing } = await supabase.from('Book').select('id, coverImage').eq('id', id).single()
   if (!existing) return Response.json({ error: 'Buku tidak ditemukan' }, { status: 404 })
 
-  const activeLoans = await prisma.loan.count({
-    where: { bookId: id, status: { in: ['PENDING', 'APPROVED'] } },
-  })
-  if (activeLoans > 0) {
+  const { count: activeLoans } = await supabase
+    .from('Loan')
+    .select('*', { count: 'exact', head: true })
+    .eq('bookId', id)
+    .in('status', ['PENDING', 'APPROVED'])
+
+  if (activeLoans && activeLoans > 0) {
     return Response.json({ error: 'Buku masih memiliki pinjaman aktif' }, { status: 400 })
   }
 
-  // Hapus cover dari Supabase Storage jika ada
   if (existing.coverImage) {
     const oldPath = extractStoragePath(existing.coverImage, 'book-covers')
-    if (oldPath) {
-      const supabase = await createClient()
-      await supabase.storage.from('book-covers').remove([oldPath]).catch(() => {})
-    }
+    if (oldPath) await supabase.storage.from('book-covers').remove([oldPath]).catch(() => {})
   }
 
-  await prisma.book.delete({ where: { id } })
+  await supabase.from('Book').delete().eq('id', id)
   return Response.json({ success: true })
 }

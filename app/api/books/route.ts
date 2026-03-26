@@ -1,7 +1,6 @@
-import { prisma } from '@/lib/prisma'
 import { getServerUser } from '@/lib/auth'
-import { NextRequest } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { NextRequest } from 'next/server'
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -10,32 +9,25 @@ export async function GET(request: NextRequest) {
   const page = Number(searchParams.get('page') ?? 1)
   const limit = Number(searchParams.get('limit') ?? 12)
 
-  const where = {
-    AND: [
-      search
-        ? {
-            OR: [
-              { title: { contains: search } },
-              { author: { contains: search } },
-            ],
-          }
-        : {},
-      category ? { category: { slug: category } } : {},
-    ],
+  const supabase = await createClient()
+
+  let categoryId: string | null = null
+  if (category) {
+    const { data: cat } = await supabase.from('Category').select('id').eq('slug', category).single()
+    categoryId = cat?.id ?? null
   }
 
-  const [books, total] = await Promise.all([
-    prisma.book.findMany({
-      where,
-      include: { category: true },
-      skip: (page - 1) * limit,
-      take: limit,
-      orderBy: { createdAt: 'desc' },
-    }),
-    prisma.book.count({ where }),
-  ])
+  let query = supabase
+    .from('Book')
+    .select('id, title, author, description, coverImage, externalUrl, stock, categoryId, createdAt, category:Category!Book_categoryId_fkey(id, name, slug)', { count: 'exact' })
+    .order('createdAt', { ascending: false })
 
-  return Response.json({ books, total, page, limit })
+  if (search) query = query.or(`title.ilike.%${search}%,author.ilike.%${search}%`)
+  if (categoryId) query = query.eq('categoryId', categoryId)
+
+  const { data: books, count } = await query.range((page - 1) * limit, page * limit - 1)
+
+  return Response.json({ books: books ?? [], total: count ?? 0, page, limit })
 }
 
 export async function POST(request: NextRequest) {
@@ -62,14 +54,14 @@ export async function POST(request: NextRequest) {
       return Response.json({ error: 'Stok tidak valid' }, { status: 400 })
     }
 
+    const supabase = await createClient()
     let coverImage: string | null = coverImageUrl || null
 
     if (coverFile && coverFile.size > 0) {
-      const supabase = await createClient()
       const ext = coverFile.name.split('.').pop()?.toLowerCase() || 'jpg'
       const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-
       const bytes = await coverFile.arrayBuffer()
+
       const { error: uploadError } = await supabase.storage
         .from('book-covers')
         .upload(filename, bytes, { contentType: coverFile.type, upsert: false })
@@ -83,10 +75,16 @@ export async function POST(request: NextRequest) {
       coverImage = urlData.publicUrl
     }
 
-    const book = await prisma.book.create({
-      data: { title, author, description, externalUrl: externalUrl || null, stock, categoryId, coverImage },
-      include: { category: true },
-    })
+    const { data: book, error } = await supabase
+      .from('Book')
+      .insert({ title, author, description, externalUrl: externalUrl || null, stock, categoryId, coverImage })
+      .select('id, title, author, description, coverImage, externalUrl, stock, categoryId, category:Category!Book_categoryId_fkey(id, name, slug)')
+      .single()
+
+    if (error) {
+      console.error('[POST /api/books] insert error:', error)
+      return Response.json({ error: 'Terjadi kesalahan server' }, { status: 500 })
+    }
 
     return Response.json({ book }, { status: 201 })
   } catch (err) {

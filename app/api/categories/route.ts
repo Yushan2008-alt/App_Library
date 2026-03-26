@@ -1,13 +1,21 @@
-import { prisma } from '@/lib/prisma'
 import { getServerUser } from '@/lib/auth'
+import { createClient } from '@/lib/supabase/server'
 import { NextRequest } from 'next/server'
 
 export async function GET() {
-  const categories = await prisma.category.findMany({
-    include: { _count: { select: { books: true } } },
-    orderBy: { name: 'asc' },
-  })
-  return Response.json({ categories })
+  const supabase = await createClient()
+  const { data: categories } = await supabase
+    .from('Category')
+    .select('id, name, slug, books:Book!Book_categoryId_fkey(id)')
+    .order('name', { ascending: true })
+
+  const result = (categories ?? []).map((c) => ({
+    ...c,
+    _count: { books: Array.isArray(c.books) ? c.books.length : 0 },
+    books: undefined,
+  }))
+
+  return Response.json({ categories: result })
 }
 
 export async function POST(request: NextRequest) {
@@ -22,9 +30,17 @@ export async function POST(request: NextRequest) {
   const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
   if (!slug) return Response.json({ error: 'Nama kategori tidak valid' }, { status: 400 })
 
-  const existing = await prisma.category.findUnique({ where: { slug } })
+  const supabase = await createClient()
+
+  const { data: existing } = await supabase.from('Category').select('id').eq('slug', slug).maybeSingle()
   if (existing) return Response.json({ error: 'Kategori sudah ada' }, { status: 400 })
 
-  const category = await prisma.category.create({ data: { name, slug } })
+  const { data: category, error } = await supabase
+    .from('Category')
+    .insert({ name, slug })
+    .select('id, name, slug')
+    .single()
+
+  if (error) return Response.json({ error: 'Gagal membuat kategori' }, { status: 500 })
   return Response.json({ category }, { status: 201 })
 }

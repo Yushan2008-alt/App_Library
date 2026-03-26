@@ -1,5 +1,5 @@
 import { getServerUser } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { createServiceClient } from '@/lib/supabase/service'
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
@@ -32,28 +32,26 @@ export async function POST(request: NextRequest) {
   const bytes = await file.arrayBuffer()
   const supabase = await createClient()
 
-  // Upload ke Supabase Storage (upsert = overwrite jika sudah ada)
   const { error: uploadError } = await supabase.storage
     .from('avatars')
-    .upload(filename, bytes, {
-      contentType: file.type,
-      upsert: true,
-    })
+    .upload(filename, bytes, { contentType: file.type, upsert: true })
 
   if (uploadError) {
     console.error('Storage upload error:', uploadError)
     return NextResponse.json({ error: 'Gagal mengupload foto profil.' }, { status: 500 })
   }
 
-  // Ambil public URL
   const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filename)
-  // Tambahkan cache-buster agar browser reload gambar baru
   const avatarUrl = `${urlData.publicUrl}?t=${Date.now()}`
 
-  const updated = await prisma.user.update({
-    where: { id: user.id },
-    data: { avatarUrl },
-  })
+  const service = createServiceClient()
+  const { data: updated, error } = await service
+    .from('User')
+    .update({ avatarUrl })
+    .eq('id', user.id)
+    .select('avatarUrl')
+    .single()
 
+  if (error) return NextResponse.json({ error: 'Gagal menyimpan URL avatar.' }, { status: 500 })
   return NextResponse.json({ avatarUrl: updated.avatarUrl })
 }
