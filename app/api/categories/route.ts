@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
 
   const { data: category, error } = await supabase
     .from('Category')
-    .insert({ name, slug })
+    .insert({ id: crypto.randomUUID(), name, slug })
     .select('id, name, slug')
     .single()
 

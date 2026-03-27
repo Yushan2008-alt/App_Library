@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
 
     const { data: book, error } = await supabase
       .from('Book')
-      .insert({ title, author, description, externalUrl: externalUrl || null, stock, categoryId, coverImage })
+      .insert({ id: crypto.randomUUID(), title, author, description, externalUrl: externalUrl || null, stock, categoryId, coverImage })
       .select('id, title, author, description, coverImage, externalUrl, stock, categoryId, category:Category!Book_categoryId_fkey(id, name, slug)')
       .single()
 

@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
 
   const { data: loan, error } = await supabase
     .from('Loan')
-    .insert({ userId: user.id, bookId })
+    .insert({ id: crypto.randomUUID(), userId: user.id, bookId })
     .select('id, status, requestedAt, book:Book!Loan_bookId_fkey(id, title), user:User!Loan_userId_fkey(id, name)')
     .single()
 

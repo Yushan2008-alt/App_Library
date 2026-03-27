@@ -2,7 +2,7 @@ import { createServiceClient } from '@/lib/supabase/service'
 
 export async function createNotification(userId: string, message: string) {
   const supabase = createServiceClient()
-  await supabase.from('Notification').insert({ userId, message })
+  await supabase.from('Notification').insert({ id: crypto.randomUUID(), userId, message })
 }
 
 export async function createNotificationsForAdmins(message: string) {
@@ -10,6 +10,6 @@ export async function createNotificationsForAdmins(message: string) {
   const { data: admins } = await supabase.from('User').select('id').eq('role', 'ADMIN')
   if (!admins || admins.length === 0) return
   await supabase.from('Notification').insert(
-    admins.map((a: { id: string }) => ({ userId: a.id, message }))
+    admins.map((a: { id: string }) => ({ id: crypto.randomUUID(), userId: a.id, message }))
   )
 }
