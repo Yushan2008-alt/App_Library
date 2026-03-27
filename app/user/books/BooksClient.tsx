@@ -140,6 +140,7 @@ function BookCard({ book, colorIndex }: { book: Book; colorIndex: number }) {
   return (
     <Link
       href={`/user/books/${book.id}`}
+      prefetch={false}
       className="group block rounded-2xl overflow-hidden transition-all duration-300"
       style={{ background: 'rgba(12,24,50,0.65)', backdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.08)' }}
       onMouseEnter={(e) => {

@@ -1,5 +1,6 @@
 import { getServerUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
+import { fetchOgImageFromUrl } from '@/lib/og-fetch'
 import { NextRequest } from 'next/server'
 
 /** Extract storage path from a Supabase Storage public URL */
@@ -55,6 +56,11 @@ export async function PUT(request: NextRequest, ctx: RouteContext<'/api/books/[i
     if (!existing) return Response.json({ error: 'Buku tidak ditemukan' }, { status: 404 })
 
     let coverImage = coverImageUrl !== null ? (coverImageUrl || null) : existing.coverImage
+
+    // Server-side OG fallback: if no cover provided but externalUrl exists and no existing cover
+    if (!coverImage && !coverFile && externalUrl) {
+      coverImage = await fetchOgImageFromUrl(externalUrl)
+    }
 
     if (coverFile && coverFile.size > 0) {
       const ext = coverFile.name.split('.').pop()?.toLowerCase() || 'jpg'

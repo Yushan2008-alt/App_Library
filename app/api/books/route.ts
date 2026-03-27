@@ -1,5 +1,6 @@
 import { getServerUser } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
+import { fetchOgImageFromUrl } from '@/lib/og-fetch'
 import { NextRequest } from 'next/server'
 
 export async function GET(request: NextRequest) {
@@ -56,6 +57,11 @@ export async function POST(request: NextRequest) {
 
     const supabase = await createClient()
     let coverImage: string | null = coverImageUrl || null
+
+    // Server-side OG fallback: if no cover provided but externalUrl exists, auto-fetch
+    if (!coverImage && !coverFile && externalUrl) {
+      coverImage = await fetchOgImageFromUrl(externalUrl)
+    }
 
     if (coverFile && coverFile.size > 0) {
       const ext = coverFile.name.split('.').pop()?.toLowerCase() || 'jpg'
