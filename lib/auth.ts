@@ -22,7 +22,13 @@ export const getServerUser = cache(async function getServerUser() {
     try {
       const service = createServiceClient()
       const { data: dbUser } = await service.from('User').select('*').eq('id', user.id).single()
-      return dbUser ?? fallback
+      if (!dbUser) return fallback
+      // Always use Supabase auth email as source of truth (handles email change)
+      const currentEmail = user.email ?? dbUser.email
+      if (dbUser.email !== currentEmail) {
+        service.from('User').update({ email: currentEmail }).eq('id', user.id).then(() => {})
+      }
+      return { ...dbUser, email: currentEmail }
     } catch {
       return fallback
     }

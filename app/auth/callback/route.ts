@@ -45,6 +45,9 @@ export async function GET(request: NextRequest) {
               email: authUser.email!,
               role,
             })
+          } else {
+            // Sync email in DB in case user verified an email change
+            await service.from('User').update({ email: authUser.email! }).eq('id', authUser.id)
           }
         } catch (dbError) {
           // DB failure should not block login — getServerUser() has a fallback
