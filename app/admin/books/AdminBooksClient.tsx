@@ -35,12 +35,15 @@ export default function AdminBooksClient({
   async function handleDelete(id: string) {
     if (!confirm('Hapus buku ini?')) return
     setDeleting(id)
-    const res = await fetch(`/api/books/${id}`, { method: 'DELETE' })
-    setDeleting(null)
-    if (res.ok) router.refresh()
-    else {
-      const d = await res.json()
+    try {
+      const res = await fetch(`/api/books/${id}`, { method: 'DELETE' })
+      if (res.ok) { router.refresh(); return }
+      const d = await res.json().catch(() => ({}))
       alert(d.error ?? 'Gagal menghapus')
+    } catch {
+      alert('Koneksi gagal. Coba lagi.')
+    } finally {
+      setDeleting(null)
     }
   }
 

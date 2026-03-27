@@ -39,12 +39,17 @@ export default function AdminLoansClient({ initialLoans }: { initialLoans: Loan[
 
   async function action(id: string, type: 'approve' | 'reject' | 'return') {
     setLoading(id + type)
-    const res = await fetch(`/api/loans/${id}/${type}`, { method: 'PATCH' })
-    const data = await res.json()
-    setLoading(null)
-    if (!res.ok) { alert(data.error ?? 'Gagal'); return }
-    setLoans((prev) => prev.map((l) => (l.id === id ? { ...l, ...data.loan } : l)))
-    router.refresh()
+    try {
+      const res = await fetch(`/api/loans/${id}/${type}`, { method: 'PATCH' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) { alert(data.error ?? 'Gagal'); return }
+      setLoans((prev) => prev.map((l) => (l.id === id ? { ...l, ...data.loan } : l)))
+      router.refresh()
+    } catch {
+      alert('Koneksi gagal. Coba lagi.')
+    } finally {
+      setLoading(null)
+    }
   }
 
   const tabs = ['ALL', 'PENDING', 'APPROVED', 'REJECTED', 'RETURNED']
